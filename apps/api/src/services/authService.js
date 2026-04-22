@@ -1,47 +1,58 @@
 import bcrypt from "bcryptjs";
-import { users } from "../data/users.js";
+import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
 
 export function sanitizeUser(user) {
-  const { password, passwordHash, ...safe } = user;
-  return safe;
+  const obj = user.toJSON ? user.toJSON() : { ...user };
+  const { passwordHash, active, ...rest } = obj;
+  // Normalize DB `active` -> frontend `isActive` to keep shape consistent
+  return { ...rest, isActive: active ?? true };
 }
 
-export function signup(payload) {
-  const { name, email, password, role = "Employee" } = payload;
+export async function signup(payload) {
+  const { name, role = "employee" } = payload;
+  const email = (payload.email || "").trim().toLowerCase();
+  const password = payload.password || "";
   if (!name || !email || !password) throw new Error("Name, email, and password are required");
-  const exists = users.some((user) => user.email.toLowerCase() === email.toLowerCase());
-  if (exists) throw new Error("User already exists");
+  
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) throw new Error("User already exists");
 
-  const user = {
-    id: `u-${Date.now()}`,
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(password, salt);
+
+  const user = new User({
     name,
-    email,
-    role,
-    isActive: true,
-    lastActivityAt: new Date().toISOString(),
-    passwordHash: bcrypt.hashSync(password, 10),
-  };
-  users.push(user);
+    email: email.toLowerCase(),
+    passwordHash,
+    role: role.toLowerCase(),
+    active: true,
+  });
+
+  await user.save();
 
   return { token: signToken(user), user: sanitizeUser(user) };
 }
 
-export function login(payload) {
-  const { email, password } = payload;
-  const user = users.find((item) => item.email.toLowerCase() === String(email).toLowerCase());
+export async function login(payload) {
+  const email = (payload.email || "").trim().toLowerCase();
+  const password = payload.password || "";
+  const user = await User.findOne({ email });
+  
   if (!user) throw new Error("Invalid credentials");
-  if (!user.isActive) throw new Error("User is deactivated");
+  if (!user.active) throw new Error("User is deactivated");
 
-  const matches = bcrypt.compareSync(password, user.passwordHash);
+  const matches = await bcrypt.compare(password, user.passwordHash);
   if (!matches) throw new Error("Invalid credentials");
-  user.lastActivityAt = new Date().toISOString();
+  
+  user.lastActiveAt = new Date();
+  await user.save();
 
   return { token: signToken(user), user: sanitizeUser(user) };
 }
 
-export function getCurrentUser(id) {
-  const user = users.find((item) => item.id === id);
+export async function getCurrentUser(id) {
+  const user = await User.findById(id);
   if (!user) return null;
   return sanitizeUser(user);
 }

@@ -11,8 +11,11 @@ const DOMAIN_EVENTS = [
   "notification:created",
 ];
 
+let ioInstance;
+
 export function createSocketServer(httpServer, clientUrl) {
   const io = new Server(httpServer, { cors: { origin: clientUrl, credentials: true } });
+  ioInstance = io;
 
   io.use((socket, next) => {
     try {
@@ -35,4 +38,16 @@ export function createSocketServer(httpServer, clientUrl) {
   });
 
   return io;
+}
+
+export function emitToAll(event, payload) {
+  if (ioInstance) {
+    ioInstance.emit(event, payload);
+  }
+}
+
+export function emitToUser(userId, event, payload) {
+  if (ioInstance) {
+    ioInstance.to(`user:${userId}`).emit(event, payload);
+  }
 }

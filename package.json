@@ -7,7 +7,7 @@
     "apps/api"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "dev": "echo \"Error: Combined dev is disabled. Run 'npm run dev:web' for frontend or 'npm run dev:api' for backend.\" && exit 1",
     "dev:web": "npm run dev -w apps/web",
     "dev:api": "npm run dev -w apps/api",
     "build": "npm run build -w apps/web",

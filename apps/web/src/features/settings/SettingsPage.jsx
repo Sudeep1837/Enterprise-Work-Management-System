@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
-import { setTheme, updateProfile } from "../../store/workSlice";
+import { setTheme } from "../../store/workSlice";
+import { updateProfileThunk } from "../../store/authSlice";
 import { toast } from "react-toastify";
 import { PageCard, PageHeader, Button } from "../common/components/UI";
 import ProfileForm from "./components/ProfileForm";
@@ -73,8 +74,10 @@ export default function SettingsPage() {
             <ProfileForm 
               initialValues={{ name: profile.name || authUser?.name || "", email: profile.email || authUser?.email || "" }} 
               onSubmit={(values) => {
-                dispatch(updateProfile(values));
-                toast.success("Profile updated successfully");
+                dispatch(updateProfileThunk(values))
+                  .unwrap()
+                  .then(() => toast.success("Profile updated successfully"))
+                  .catch((err) => toast.error(err.message || "Failed to update profile"));
               }} 
             />
           </PageCard>

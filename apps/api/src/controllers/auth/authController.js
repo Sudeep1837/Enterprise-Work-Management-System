@@ -1,25 +1,42 @@
 import * as authService from "../../services/authService.js";
+import * as userService from "../../services/userService.js";
 
-export function signup(req, res, next) {
+export async function signup(req, res, next) {
   try {
-    const result = authService.signup(req.body);
+    const result = await authService.signup(req.body);
     res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function login(req, res, next) {
+export async function login(req, res, next) {
   try {
-    const result = authService.login(req.body);
+    const result = await authService.login(req.body);
     res.json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function me(req, res) {
-  const user = authService.getCurrentUser(req.user.sub);
-  if (!user) return res.status(404).json({ message: "User not found" });
-  return res.json({ user });
+export async function me(req, res) {
+  try {
+    const user = await authService.getCurrentUser(req.user.sub);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function updateProfile(req, res, next) {
+  try {
+    const { name, email, avatar } = req.body;
+    // We only allow users to update basic profile info for themselves
+    const user = await userService.updateUser(req.user.sub, { name, email, avatar });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ user });
+  } catch (error) {
+    next(error);
+  }
 }

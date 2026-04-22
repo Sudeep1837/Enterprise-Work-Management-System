@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { TASK_STATUSES } from "../../constants/roles";
-import { moveTask } from "../../store/workSlice";
-import { getSocket } from "../../services/socketClient";
+import { moveTaskStatus } from "../../store/workSlice";
 import { PageHeader, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
 import { selectKanbanMetrics } from "../../store/selectors";
@@ -38,8 +37,7 @@ export default function KanbanPage() {
       <DndContext
         onDragEnd={({ active, over }) => {
           if (!over) return;
-          dispatch(moveTask({ taskId: active.id, status: over.id }));
-          getSocket()?.emit("task:moved", { taskId: active.id, status: over.id });
+          dispatch(moveTaskStatus({ id: active.id, status: over.id }));
         }}
       >
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 pt-2">
@@ -79,27 +77,32 @@ function Column({ status, tasks }) {
   );
 }
 
+import { Clock, User } from "lucide-react";
+
 function TaskCard({ task }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id || task._id });
   
   const getPriorityTone = (priority) => {
-    if (priority === "High") return "red";
-    if (priority === "Medium") return "amber";
+    if (priority === "Critical") return "red";
+    if (priority === "High") return "amber";
+    if (priority === "Medium") return "indigo";
     return "blue";
   };
+
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done";
 
   return (
     <motion.div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      layoutId={task.id}
+      layoutId={task.id || task._id}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         zIndex: isDragging ? 50 : 1,
       }}
-      className={`group relative cursor-grab rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-white/10 dark:bg-slate-800 ${
-        isDragging ? "shadow-2xl ring-2 ring-indigo-500/50 rotate-2" : ""
+      className={`group relative cursor-grab rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-800 ${
+        isDragging ? "shadow-2xl ring-2 ring-indigo-500/50 rotate-2 scale-105" : ""
       }`}
     >
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -108,12 +111,34 @@ function TaskCard({ task }) {
           <GripHorizontal className="h-4 w-4 text-slate-400" />
         </div>
       </div>
-      <div className="flex items-center justify-between">
-        <Badge value={task.priority} tone={getPriorityTone(task.priority)} />
-        <div className="flex items-center gap-1.5">
-          <LayoutTemplate className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-xs text-slate-500 dark:text-slate-400">{task.type}</span>
+      
+      {task.projectName && (
+        <p className="mb-3 text-xs font-medium text-indigo-600 dark:text-indigo-400 truncate">
+          {task.projectName}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between mt-auto">
+        <div className="flex items-center gap-2">
+          <Badge value={task.priority} tone={getPriorityTone(task.priority)} />
+          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+            <LayoutTemplate className="h-3.5 w-3.5" />
+            <span className="text-[10px] uppercase font-semibold tracking-wider">{task.type}</span>
+          </div>
         </div>
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <User className="h-3.5 w-3.5" />
+          <span className="truncate max-w-[90px]">{task.assigneeName || "Unassigned"}</span>
+        </div>
+        {task.dueDate && (
+          <div className={`flex items-center gap-1 ${isOverdue ? "text-red-500 font-medium" : ""}`}>
+            <Clock className="h-3 w-3" />
+            <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );

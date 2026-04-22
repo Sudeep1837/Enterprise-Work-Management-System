@@ -11,8 +11,8 @@ const schema = yup.object({
   status: yup.string().required(),
 });
 
-export default function ProjectForm({ initialValues, onSubmit, onCancel, loading }) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+export default function ProjectForm({ initialValues, onSubmit, onCancel }) {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(schema),
     values: initialValues,
   });
@@ -23,9 +23,9 @@ export default function ProjectForm({ initialValues, onSubmit, onCancel, loading
       <TextInput label="Owner" placeholder="Manager User" error={errors.owner?.message} {...register("owner")} />
       <SelectInput label="Status" options={PROJECT_STATUSES} error={errors.status?.message} {...register("status")} />
       <div className="flex justify-end gap-2 mt-2">
-        <Button variant="secondary" type="button" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" disabled={loading} type="submit" className="disabled:opacity-50">
-          {loading ? "Saving..." : "Save"}
+        <Button variant="secondary" type="button" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+        <Button variant="primary" disabled={isSubmitting} type="submit" className="disabled:opacity-50">
+          {isSubmitting ? "Saving..." : "Save"}
         </Button>
       </div>
     </form>

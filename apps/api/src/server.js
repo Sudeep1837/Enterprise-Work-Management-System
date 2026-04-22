@@ -5,8 +5,13 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import env from "./config/env.js";
+import connectDB from "./db/connect.js";
 import authRoutes from "./routes/auth/authRoutes.js";
 import userRoutes from "./routes/users/userRoutes.js";
+import projectRoutes from "./routes/projects/projectRoutes.js";
+import taskRoutes from "./routes/tasks/taskRoutes.js";
+import notificationRoutes from "./routes/notifications/notificationRoutes.js";
+import activityRoutes from "./routes/activity/activityRoutes.js";
 import { errorMiddleware } from "./middleware/errorMiddleware.js";
 import { createSocketServer } from "./sockets/socketServer.js";
 
@@ -25,6 +30,10 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/activity", activityRoutes);
 app.post("/api/upload", upload.single("file"), (req, res) => {
   res.status(201).json({
     file: {
@@ -39,6 +48,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 app.use(errorMiddleware);
 createSocketServer(server, env.clientUrl);
 
-server.listen(env.port, () => {
+server.listen(env.port, async () => {
+  await connectDB();
   console.log(`API server running on http://localhost:${env.port}`);
 });

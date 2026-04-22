@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { TextInput } from "../../common/forms/FormFields";
 import { Button } from "../../common/components/UI";
+import { Eye, EyeOff } from "lucide-react";
 
 const schema = yup.object({
   currentPassword: yup.string().required("Current password is required"),
@@ -10,6 +12,8 @@ const schema = yup.object({
 });
 
 export default function PasswordForm({ onSubmit }) {
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ 
     resolver: yupResolver(schema) 
   });
@@ -19,8 +23,18 @@ export default function PasswordForm({ onSubmit }) {
       await onSubmit(values); 
       reset(); 
     })}>
-      <TextInput type="password" label="Current Password" error={errors.currentPassword?.message} {...register("currentPassword")} placeholder="••••••••" />
-      <TextInput type="password" label="New Password" error={errors.newPassword?.message} {...register("newPassword")} placeholder="••••••••" />
+      <div className="relative">
+        <TextInput type={showCurrent ? "text" : "password"} label="Current Password" error={errors.currentPassword?.message} {...register("currentPassword")} placeholder="••••••••" />
+        <button type="button" className={`absolute right-3 top-[34px] text-slate-400 hover:text-slate-600`} onClick={() => setShowCurrent(!showCurrent)}>
+          {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      <div className="relative">
+        <TextInput type={showNew ? "text" : "password"} label="New Password" error={errors.newPassword?.message} {...register("newPassword")} placeholder="••••••••" />
+        <button type="button" className={`absolute right-3 top-[34px] text-slate-400 hover:text-slate-600`} onClick={() => setShowNew(!showNew)}>
+          {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
       <div className="flex text-sm text-slate-500 my-1">
         Password must be at least 8 characters long.
       </div>

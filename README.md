@@ -16,10 +16,9 @@ This project is a polished, modular, enterprise-style demo app that showcases:
 
 This is an intentionally hybrid academic/demo architecture:
 
-- **Backend (`apps/api`)**: Node.js + Express handles auth, JWT, role-aware middleware, demo users API, health endpoint, and Socket.IO relay.
-- **Frontend (`apps/web`)**: React + Redux Toolkit stores business data in `localStorage` (projects, tasks, comments, notifications, theme, preferences, activity, and attachment metadata).
-- **Realtime model**: Socket.IO broadcasts domain events; clients update Redux + localStorage.
-- **No centralized DB**: no MongoDB/PostgreSQL/SQLite/Firebase/Supabase, no Prisma, no ORM.
+- **Backend (`apps/api`)**: Node.js + Express handles auth, JWT, role-aware middleware, CRUD APIs, health endpoint, and Socket.IO relay. **Data is persisted in MongoDB** using Mongoose.
+- **Frontend (`apps/web`)**: React + Redux Toolkit fetches data via Axios Async Thunks. `localStorage` is exclusively used for UI state (theme, sidebar).
+- **Realtime model**: Socket.IO broadcasts domain events after MongoDB writes; clients update Redux stores.
 
 ## ESM and Tooling Guarantees
 
@@ -116,25 +115,72 @@ root/
 
 ## Setup
 
+Ensure you have [MongoDB](https://www.mongodb.com/) installed and running locally, or use a MongoDB Atlas URI.
+
+**1. Install Dependencies:**
+From the root directory, install dependencies for the entire workspace:
 ```bash
 npm install
-cp apps/api/.env.example apps/api/.env
-npm run dev
 ```
 
-- Web: [http://localhost:5173](http://localhost:5173)
-- API: [http://localhost:5000](http://localhost:5000)
+**2. Setup Environment Variables:**
+Set up the `.env` files for both the backend and frontend apps.
 
-## Environment Variables (`apps/api/.env`)
+Backend (`apps/api`):
+```bash
+cp apps/api/.env.example apps/api/.env
+```
 
-- `PORT`
-- `CLIENT_URL`
+Frontend (`apps/web`):
+```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+**3. Seed the Database (Required for first run):**
+```bash
+node apps/api/src/seed/seed.js
+```
+
+## Running the Development Servers
+
+The frontend and backend are designed to run independently. You will need **two separate terminals**.
+
+### Terminal 1: Backend (API)
+Start the Node.js Express server:
+```bash
+cd apps/api
+npm run dev
+```
+- API will be running at [http://localhost:5000](http://localhost:5000)
+
+### Terminal 2: Frontend (Web)
+Start the React Vite app:
+```bash
+cd apps/web
+npm run dev
+```
+- Web App will be running at [http://localhost:5173](http://localhost:5173)
+
+---
+
+## Environment Variables
+
+### Backend (`apps/api/.env`)
+- `PORT=5000`
+- `CLIENT_URL=http://localhost:5173`
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
+- `MONGODB_URI`
 
-## Scripts
+### Frontend (`apps/web/.env`)
+- `VITE_API_URL=http://localhost:5000/api`
 
-- `npm run dev` - run web + api
+---
+
+## Workspace Scripts
+
+While you can run the apps individually from their directories, you can also use these workspace scripts from the root directory:
+
 - `npm run dev:web` - run frontend only
 - `npm run dev:api` - run backend only
 - `npm run build` - build frontend

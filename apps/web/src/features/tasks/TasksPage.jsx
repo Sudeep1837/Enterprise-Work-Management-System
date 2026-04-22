@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
-import { addNotification, deleteTask, upsertTask } from "../../store/workSlice";
+import { deleteTaskAsync, createTask, updateTaskAsync } from "../../store/workSlice";
 import { selectDashboardMetrics } from "../../store/selectors";
-import { getSocket } from "../../services/socketClient";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
-import { CheckSquare, Plus, Search } from "lucide-react";
+import { CheckSquare, Plus, Search, Clock, User } from "lucide-react";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
@@ -32,11 +32,15 @@ export default function TasksPage() {
     return sortByField(applyTextFilter(result, debounced, ["title", "type", "priority", "status"]), sort, "desc");
   }, [tasks, debounced, sort, statusFilter]);
 
-  const saveTask = (values) => {
-    const task = { ...editing, ...values, id: editing?.id || crypto.randomUUID() };
-    dispatch(upsertTask(task));
-    dispatch(addNotification({ id: crypto.randomUUID(), message: `Task ${editing?.id ? "updated" : "created"}: ${task.title}`, read: false }));
-    getSocket()?.emit(editing?.id ? "task:updated" : "task:created", { task });
+  const saveTask = async (values) => {
+    if (editing?.id || editing?._id) {
+      const id = editing.id || editing._id;
+      await dispatch(updateTaskAsync({ ...editing, ...values, id }));
+      toast.success("Task updated successfully");
+    } else {
+      const result = await dispatch(createTask({ ...values }));
+      if (!result.error) toast.success("Task created successfully");
+    }
     setEditing(null);
   };
 
@@ -47,7 +51,8 @@ export default function TasksPage() {
     return "slate";
   };
 
-  const getUserName = (id) => users.find(u => u.id === id)?.name || "Unassigned";
+  // Defensive: handle both .id (REST/toJSON) and ._id (raw Mongoose/socket) shapes
+  const getUserName = (id) => users.find(u => (u.id || u._id?.toString()) === id?.toString())?.name || "Unassigned";
 
   return (
     <div className="space-y-6">
@@ -111,15 +116,22 @@ export default function TasksPage() {
                     <h3 className="text-base font-semibold text-slate-900 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">{task.title}</h3>
                     <Badge value={task.status} />
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1.5"><Badge value={task.priority} tone={getPriorityTone(task.priority)} /></span>
-                    <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5">{task.type}</span>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center"><Badge value={task.priority} tone={getPriorityTone(task.priority)} /></span>
+                    <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5 uppercase text-[10px] tracking-wider font-bold">{task.type}</span>
                     <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5 font-medium text-slate-600 dark:text-slate-300">
+                      <User className="h-3.5 w-3.5" />
                       {getUserName(task.assigneeId)}
                     </span>
                     {task.projectName && (
                       <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
                         {task.projectName}
+                      </span>
+                    )}
+                    {task.dueDate && (
+                      <span className={`flex items-center gap-1.5 before:content-['·'] before:mr-1.5 ${task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done" ? "text-red-500 font-medium" : ""}`}>
+                        <Clock className="h-3.5 w-3.5" />
+                        {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
                     )}
                   </div>
@@ -140,8 +152,8 @@ export default function TasksPage() {
         </PageCard>
       )}
 
-      <ConfirmDialog open={Boolean(deleting)} title="Delete task?" message="This will permanently remove the task." onCancel={() => setDeleting(null)} onConfirm={() => { dispatch(deleteTask(deleting.id)); setDeleting(null); }} />
-      <TaskDetailsDrawer task={tasks.find((item) => item.id === selected)} onClose={() => setSelected(null)} />
+      <ConfirmDialog open={Boolean(deleting)} title="Delete task?" message="This will permanently remove the task." onCancel={() => setDeleting(null)} onConfirm={() => { dispatch(deleteTaskAsync(deleting.id || deleting._id)); setDeleting(null); }} />
+      <TaskDetailsDrawer task={tasks.find((item) => item.id === selected || item._id?.toString() === selected)} onClose={() => setSelected(null)} />
     </div>
   );
 }

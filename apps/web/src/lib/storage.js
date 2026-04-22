@@ -4,11 +4,6 @@ const seedState = {
   version: 1,
   theme: "light",
   ui: { taskFilters: {}, projectFilters: {} },
-  notifications: [],
-  projects: [],
-  tasks: [],
-  users: [],
-  activity: [],
 };
 
 export function readStorage() {
@@ -16,14 +11,20 @@ export function readStorage() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return seedState;
     const parsed = JSON.parse(raw);
-    return { ...seedState, ...parsed };
+    return { ...seedState, theme: parsed.theme, ui: parsed.ui };
   } catch {
     return seedState;
   }
 }
 
 export function writeStorage(payload) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  // Only save theme and UI preferences
+  const toSave = {
+    version: payload.version || 1,
+    theme: payload.theme,
+    ui: payload.ui,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 }
 
 export { STORAGE_KEY, seedState };

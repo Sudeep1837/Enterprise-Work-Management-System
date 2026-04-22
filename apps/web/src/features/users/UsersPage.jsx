@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { PageCard, PageHeader, Button, Badge, TableShell, EmptyState } from "../common/components/UI";
 import { InsightCard } from "../common/components/Analytics";
 import { applyTextFilter } from "../common/utils/filtering";
-import { upsertUserDirectoryEntry } from "../../store/workSlice";
+import { createUserAsync, updateUserAsync, fetchUsers } from "../../store/workSlice";
 import { selectWorkloadMetrics } from "../../store/selectors";
 import UserForm from "./components/UserForm";
 import { Users, Search, UserPlus, ShieldAlert, Activity } from "lucide-react";
@@ -15,6 +15,11 @@ export default function UsersPage() {
   
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null);
+
+  // Load users on mount to ensure fresh data
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
   
   // Create an active map for joining workload metrics onto base users
   const activeMap = useMemo(() => {
@@ -139,7 +144,10 @@ export default function UsersPage() {
                       <Button 
                         variant="ghost" 
                         className={user.isActive ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10" : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"} 
-                        onClick={() => dispatch(upsertUserDirectoryEntry({ ...user, isActive: !user.isActive, lastActivityAt: new Date().toISOString() }))}
+                        onClick={() => {
+                          const idToUpdate = user.id || user._id;
+                          dispatch(updateUserAsync({ id: idToUpdate, active: !user.isActive }));
+                        }}
                       >
                         {user.isActive ? "Deactivate" : "Activate"}
                       </Button>
@@ -158,8 +166,21 @@ export default function UsersPage() {
             initialValues={editing}
             onCancel={() => setEditing(null)}
             onSubmit={(values) => {
-              dispatch(upsertUserDirectoryEntry({ id: editing.id || crypto.randomUUID(), ...editing, ...values, isActive: editing.isActive ?? true }));
-              setEditing(null);
+              // Strip empty password so it doesn't overwrite the stored hash
+              const payload = { ...values };
+              if (!payload.password) delete payload.password;
+
+              if (editing.id || editing._id) {
+                dispatch(updateUserAsync({ id: editing.id || editing._id, ...payload }))
+                  .unwrap()
+                  .then(() => setEditing(null))
+                  .catch((err) => console.error("Failed to update user:", err));
+              } else {
+                dispatch(createUserAsync(payload))
+                  .unwrap()
+                  .then(() => setEditing(null))
+                  .catch((err) => console.error("Failed to create user:", err));
+              }
             }}
           />
         </PageCard>

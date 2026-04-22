@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, TableShell, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric, ProgressRing } from "../common/components/Analytics";
-import { deleteProject, upsertProject } from "../../store/workSlice";
+import { deleteProjectAsync, createProject, updateProject } from "../../store/workSlice";
 import { selectProjectHealth } from "../../store/selectors";
 import ProjectForm from "./components/ProjectForm";
 import { FolderKanban, Plus, Search } from "lucide-react";
@@ -20,8 +21,15 @@ export default function ProjectsPage() {
   const debounced = useDebouncedValue(query);
   const filtered = useMemo(() => sortByField(applyTextFilter(projectHealth, debounced, ["name", "status", "owner"]), sort, "desc"), [projectHealth, debounced, sort]);
 
-  const saveProject = (values) => {
-    dispatch(upsertProject({ ...editing, ...values, id: editing?.id || crypto.randomUUID() }));
+  const saveProject = async (values) => {
+    if (editing?.id || editing?._id) {
+      const id = editing.id || editing._id;
+      await dispatch(updateProject({ ...editing, ...values, id }));
+      toast.success("Project updated successfully");
+    } else {
+      const result = await dispatch(createProject({ ...values }));
+      if (!result.error) toast.success("Project created successfully");
+    }
     setEditing(null);
   };
 
@@ -32,6 +40,7 @@ export default function ProjectsPage() {
     return "slate";
   };
 
+  // Status values now match frontend Title Case constants
   const completedCount = projectHealth.filter(p => p.status === "Completed").length;
   const activeCount = projectHealth.filter(p => p.status === "Active").length;
 
@@ -114,7 +123,7 @@ export default function ProjectsPage() {
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
                     <div className="flex items-center gap-2">
                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                          {item.owner.charAt(0)}
+                          {item.owner ? item.owner.charAt(0) : '?'}
                        </div>
                        {item.owner}
                     </div>
@@ -138,7 +147,7 @@ export default function ProjectsPage() {
         </PageCard>
       )}
 
-      <ConfirmDialog open={Boolean(deleting)} title="Delete project?" message="This drops all tasks linked to this project." onCancel={() => setDeleting(null)} onConfirm={() => { dispatch(deleteProject(deleting.id)); setDeleting(null); }} />
+      <ConfirmDialog open={Boolean(deleting)} title="Delete project?" message="This drops all tasks linked to this project." onCancel={() => setDeleting(null)} onConfirm={() => { dispatch(deleteProjectAsync(deleting.id)); setDeleting(null); }} />
     </div>
   );
 }

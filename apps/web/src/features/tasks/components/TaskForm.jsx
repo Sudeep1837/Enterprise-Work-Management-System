@@ -21,7 +21,7 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
   const users = useSelector((state) => state.work.users || []);
   const projects = useSelector((state) => state.work.projects || []);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(schema),
     values: initialValues,
   });
@@ -33,7 +33,7 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
 
   const projectOptions = [
     { value: "", label: "Select a project..." },
-    ...projects.map(p => ({ value: p.id, label: p.name }))
+    ...projects.map(p => ({ value: p.id || p._id, label: p.name }))
   ];
 
   if (projects.length === 0) {
@@ -50,12 +50,16 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
   }
 
   const handleCustomSubmit = (values) => {
-    // Add projectName dynamically to payload
-    const project = projects.find(p => p.id === values.projectId);
-    onSubmit({
+    // Enrich payload with denormalized names for display (stored alongside IDs in DB)
+    const project = projects.find(p => (p.id || p._id) === values.projectId);
+    const assignee = users.find(u => (u.id || u._id) === values.assigneeId);
+    const enriched = {
       ...values,
       projectName: project ? project.name : "",
-    });
+      assigneeName: assignee ? assignee.name : "",
+    };
+    console.log("[TaskForm] submitting:", enriched);
+    onSubmit(enriched);
   };
 
   return (
@@ -78,8 +82,10 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
       <div className="flex justify-between items-center gap-2 mt-4 border-t border-slate-100 dark:border-white/5 pt-4">
         <TextInput type="date" label="Due date" {...register("dueDate")} />
         <div className="flex gap-2 items-end">
-          <Button variant="secondary" type="button" onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" type="submit">Save Task</Button>
+          <Button variant="secondary" type="button" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Task"}
+          </Button>
         </div>
       </div>
     </form>
