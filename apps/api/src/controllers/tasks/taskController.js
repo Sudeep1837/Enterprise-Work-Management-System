@@ -5,7 +5,7 @@ import Notification from "../../models/Notification.js";
 import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser } from "../../utils/authUtils.js";
+import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canEditUser } from "../../utils/authUtils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -155,6 +155,9 @@ export const updateTask = async (req, res, next) => {
     }
 
     task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    // FIX: declare assigneeName here, not after it's already referenced
+    const assigneeName = req.body.assigneeName || task.assigneeName || null;
 
     await logActivity({
       actorId: req.user.sub,
