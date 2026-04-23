@@ -6,7 +6,7 @@ import { moveTaskStatus } from "../../store/workSlice";
 import { PageHeader, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
 import { selectKanbanMetrics } from "../../store/selectors";
-import { Kanban, GripHorizontal, LayoutTemplate } from "lucide-react";
+import { Kanban, GripHorizontal, LayoutTemplate, Lock, Clock, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import { canMoveTask } from "../../lib/permissions";
@@ -17,17 +17,22 @@ export default function KanbanPage() {
   const currentUser = useSelector((state) => state.auth.user);
   const kMetrics = useSelector(selectKanbanMetrics);
   const dispatch = useDispatch();
+
   const grouped = useMemo(
-    () => TASK_STATUSES.map((status) => ({ status, tasks: tasks.filter((task) => task.status === status) })),
-    [tasks],
+    () =>
+      TASK_STATUSES.map((status) => ({
+        status,
+        tasks: tasks.filter((task) => task.status === status),
+      })),
+    [tasks]
   );
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col space-y-6">
-      <PageHeader 
-        title="Kanban Board" 
-        subtitle="Visualize workflow and track execution status" 
-        icon={Kanban} 
+      <PageHeader
+        title="Kanban Board"
+        subtitle="Visualize workflow and track execution status"
+        icon={Kanban}
       />
 
       <MetricsStrip>
@@ -41,14 +46,21 @@ export default function KanbanPage() {
       <DndContext
         onDragEnd={({ active, over }) => {
           if (!over) return;
-          
-          const task = tasks.find(t => (t.id || t._id?.toString()) === active.id?.toString());
+
+          const task = tasks.find((t) => (t.id || t._id?.toString()) === active.id?.toString());
           if (!task) return;
 
-          const project = projects.find(p => (p.id || p._id?.toString()) === (task.projectId?._id?.toString() || task.projectId?.toString()));
-          
+          const project = projects.find(
+            (p) =>
+              (p.id || p._id?.toString()) ===
+              (task.projectId?._id?.toString() || task.projectId?.toString())
+          );
+
           if (!canMoveTask(currentUser, task, project)) {
-            toast.error("You don't have permission to move this task.");
+            toast.error("You don't have permission to move this task.", {
+              icon: "🔒",
+              toastId: `move-denied-${task.id}`, // prevent duplicate toasts
+            });
             return;
           }
 
@@ -58,16 +70,24 @@ export default function KanbanPage() {
         }}
       >
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 pt-2">
-          {grouped.map((col) => <Column key={col.status} status={col.status} tasks={col.tasks} />)}
+          {grouped.map((col) => (
+            <Column
+              key={col.status}
+              status={col.status}
+              tasks={col.tasks}
+              currentUser={currentUser}
+              projects={projects}
+            />
+          ))}
         </div>
       </DndContext>
     </div>
   );
 }
 
-function Column({ status, tasks }) {
+function Column({ status, tasks, currentUser, projects }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
-  
+
   return (
     <div className="flex w-80 shrink-0 flex-col rounded-2xl bg-slate-100/50 p-3 dark:bg-slate-900/40 border border-slate-200/50 dark:border-white/5 backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between px-2">
@@ -76,14 +96,24 @@ function Column({ status, tasks }) {
           {tasks.length}
         </span>
       </div>
-      
-      <div 
-        ref={setNodeRef} 
+
+      <div
+        ref={setNodeRef}
         className={`flex-1 space-y-3 rounded-xl p-1 transition-colors ${
           isOver ? "bg-indigo-50 dark:bg-indigo-500/10" : ""
         }`}
       >
-        {tasks.map((task) => <TaskCard key={task.id} task={task} />)}
+        {tasks.map((task) => {
+          const project = projects.find(
+            (p) =>
+              (p.id || p._id?.toString()) ===
+              (task.projectId?._id?.toString() || task.projectId?.toString())
+          );
+          const isDraggable = canMoveTask(currentUser, task, project);
+          return (
+            <TaskCard key={task.id || task._id} task={task} isDraggable={isDraggable} />
+          );
+        })}
         {tasks.length === 0 && (
           <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
             <p className="text-sm text-slate-400">Drop here</p>
@@ -94,11 +124,13 @@ function Column({ status, tasks }) {
   );
 }
 
-import { Clock, User } from "lucide-react";
+function TaskCard({ task, isDraggable }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id || task._id,
+    // Disable drag interaction for unauthorized tasks
+    disabled: !isDraggable,
+  });
 
-function TaskCard({ task }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id || task._id });
-  
   const getPriorityTone = (priority) => {
     if (priority === "Critical") return "red";
     if (priority === "High") return "amber";
@@ -111,24 +143,42 @@ function TaskCard({ task }) {
   return (
     <motion.div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
+      {...(isDraggable ? listeners : {})}
+      {...(isDraggable ? attributes : {})}
       layoutId={task.id || task._id}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         zIndex: isDragging ? 50 : 1,
       }}
-      className={`group relative cursor-grab rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-800 ${
-        isDragging ? "shadow-2xl ring-2 ring-indigo-500/50 rotate-2 scale-105" : ""
-      }`}
+      className={`group relative rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all dark:border-white/10 dark:bg-slate-800
+        ${isDraggable
+          ? "cursor-grab hover:shadow-md"
+          : "cursor-not-allowed opacity-70"
+        }
+        ${isDragging ? "shadow-2xl ring-2 ring-indigo-500/50 rotate-2 scale-105" : ""}
+      `}
     >
+      {/* Lock indicator for unauthorized cards */}
+      {!isDraggable && (
+        <span
+          title="You don't have permission to move this task"
+          className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700"
+        >
+          <Lock className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+        </span>
+      )}
+
       <div className="mb-3 flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">{task.title}</p>
-        <div className="flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700">
-          <GripHorizontal className="h-4 w-4 text-slate-400" />
-        </div>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug pr-6">
+          {task.title}
+        </p>
+        {isDraggable && (
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700">
+            <GripHorizontal className="h-4 w-4 text-slate-400" />
+          </div>
+        )}
       </div>
-      
+
       {task.projectName && (
         <p className="mb-3 text-xs font-medium text-indigo-600 dark:text-indigo-400 truncate">
           {task.projectName}
@@ -153,7 +203,12 @@ function TaskCard({ task }) {
         {task.dueDate && (
           <div className={`flex items-center gap-1 ${isOverdue ? "text-red-500 font-medium" : ""}`}>
             <Clock className="h-3 w-3" />
-            <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+            <span>
+              {new Date(task.dueDate).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
           </div>
         )}
       </div>

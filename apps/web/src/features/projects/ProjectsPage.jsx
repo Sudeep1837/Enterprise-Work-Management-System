@@ -8,8 +8,8 @@ import { MetricsStrip, StripMetric, ProgressRing } from "../common/components/An
 import { deleteProjectAsync, createProject, updateProject } from "../../store/workSlice";
 import { selectProjectHealth } from "../../store/selectors";
 import ProjectForm from "./components/ProjectForm";
-import { FolderKanban, Plus, Search } from "lucide-react";
-import { canDeleteProject, canCreateProject } from "../../lib/permissions";
+import { FolderKanban, Plus, Search, Lock } from "lucide-react";
+import { canDeleteProject, canCreateProject, canManageProject } from "../../lib/permissions";
 
 export default function ProjectsPage() {
   const dispatch = useDispatch();
@@ -21,16 +21,24 @@ export default function ProjectsPage() {
   const [deleting, setDeleting] = useState(null);
 
   const debounced = useDebouncedValue(query);
-  const filtered = useMemo(() => sortByField(applyTextFilter(projectHealth, debounced, ["name", "status", "owner"]), sort, "desc"), [projectHealth, debounced, sort]);
+  const filtered = useMemo(
+    () => sortByField(applyTextFilter(projectHealth, debounced, ["name", "status", "owner"]), sort, "desc"),
+    [projectHealth, debounced, sort]
+  );
 
   const saveProject = async (values) => {
     if (editing?.id || editing?._id) {
       const id = editing.id || editing._id;
-      await dispatch(updateProject({ ...editing, ...values, id }));
+      const result = await dispatch(updateProject({ ...editing, ...values, id }));
+      if (result.error) {
+        toast.error("You do not have permission to edit this project.");
+        return;
+      }
       toast.success("Project updated successfully");
     } else {
       const result = await dispatch(createProject({ ...values }));
       if (!result.error) toast.success("Project created successfully");
+      else toast.error(result.payload || "Failed to create project");
     }
     setEditing(null);
   };
@@ -42,9 +50,8 @@ export default function ProjectsPage() {
     return "slate";
   };
 
-  // Status values now match frontend Title Case constants
-  const completedCount = projectHealth.filter(p => p.status === "Completed").length;
-  const activeCount = projectHealth.filter(p => p.status === "Active").length;
+  const completedCount = projectHealth.filter((p) => p.status === "Completed").length;
+  const activeCount = projectHealth.filter((p) => p.status === "Active").length;
 
   return (
     <div className="space-y-6">
@@ -65,9 +72,15 @@ export default function ProjectsPage() {
         <StripMetric label="Total Projects" value={projectHealth.length} />
         <StripMetric label="Active Delivery" value={activeCount} sub="In Progress" />
         <StripMetric label="Completed" value={completedCount} />
-        <StripMetric 
-          label="Global Health" 
-          value={projectHealth.length ? Math.round(projectHealth.reduce((acc, p) => acc + p.progress, 0) / projectHealth.length) : 0} 
+        <StripMetric
+          label="Global Health"
+          value={
+            projectHealth.length
+              ? Math.round(
+                  projectHealth.reduce((acc, p) => acc + p.progress, 0) / projectHealth.length
+                )
+              : 0
+          }
           sub="% Average"
         />
       </MetricsStrip>
@@ -94,7 +107,11 @@ export default function ProjectsPage() {
         </div>
 
         {!filtered.length ? (
-          <EmptyState title="No projects found" description="Create a project to start organizing your work tracking." icon={FolderKanban} />
+          <EmptyState
+            title="No projects found"
+            description="Create a project to start organizing your work tracking."
+            icon={FolderKanban}
+          />
         ) : (
           <TableShell>
             <thead>
@@ -107,41 +124,71 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-white/10">
-              {filtered.map((item) => (
-                <tr key={item.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <p className="font-semibold text-slate-900 dark:text-white">{item.name}</p>
-                    <p className="text-xs text-slate-500">{item.taskCount} assigned tasks</p>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 flex justify-center">
-                    <ProgressRing 
-                      progress={item.progress} 
-                      size={44} 
-                      strokeWidth={4} 
-                      colorClass={item.health === 'excellent' ? 'text-emerald-500' : item.health === 'good' ? 'text-indigo-500' : 'text-amber-500'} 
-                    />
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <Badge value={item.status} tone={getStatusTone(item.status)} />
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                    <div className="flex items-center gap-2">
-                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                          {item.owner ? item.owner.charAt(0) : '?'}
-                       </div>
-                       {item.owner}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
-                      {canDeleteProject(currentUser, item) && (
-                        <Button variant="ghost" onClick={() => setDeleting(item)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10">Delete</Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((item) => {
+                const userCanEdit = canManageProject(currentUser, item);
+                const userCanDelete = canDeleteProject(currentUser, item);
+
+                return (
+                  <tr key={item.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <p className="font-semibold text-slate-900 dark:text-white">{item.name}</p>
+                      <p className="text-xs text-slate-500">{item.taskCount} assigned tasks</p>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 flex justify-center">
+                      <ProgressRing
+                        progress={item.progress}
+                        size={44}
+                        strokeWidth={4}
+                        colorClass={
+                          item.health === "excellent"
+                            ? "text-emerald-500"
+                            : item.health === "good"
+                            ? "text-indigo-500"
+                            : "text-amber-500"
+                        }
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <Badge value={item.status} tone={getStatusTone(item.status)} />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {item.owner ? item.owner.charAt(0) : "?"}
+                        </div>
+                        {item.owner}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {/* Edit: only visible when user can manage this project */}
+                        {userCanEdit ? (
+                          <Button variant="secondary" onClick={() => setEditing(item)}>
+                            Edit
+                          </Button>
+                        ) : (
+                          <span
+                            title="Only the project owner or an admin can edit this project"
+                            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
+                          >
+                            <Lock className="h-3 w-3" /> Locked
+                          </span>
+                        )}
+
+                        {userCanDelete && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => setDeleting(item)}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </TableShell>
         )}
@@ -153,7 +200,16 @@ export default function ProjectsPage() {
         </PageCard>
       )}
 
-      <ConfirmDialog open={Boolean(deleting)} title="Delete project?" message="This drops all tasks linked to this project." onCancel={() => setDeleting(null)} onConfirm={() => { dispatch(deleteProjectAsync(deleting.id)); setDeleting(null); }} />
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Delete project?"
+        message="This drops all tasks linked to this project."
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          dispatch(deleteProjectAsync(deleting.id));
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
