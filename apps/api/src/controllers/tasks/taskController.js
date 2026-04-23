@@ -2,7 +2,10 @@ import Task from "../../models/Task.js";
 import Comment from "../../models/Comment.js";
 import ActivityLog from "../../models/ActivityLog.js";
 import Notification from "../../models/Notification.js";
+import Project from "../../models/Project.js";
+import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
+import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser } from "../../utils/authUtils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +64,19 @@ export const getTaskById = async (req, res, next) => {
 
 export const createTask = async (req, res, next) => {
   try {
+    // Assignment validation
+    const { assigneeId, projectId } = req.body;
+    let project = null;
+    if (projectId) project = await Project.findById(projectId);
+
+    if (assigneeId) {
+      const targetUser = await User.findById(assigneeId);
+      if (!targetUser) return res.status(404).json({ message: "Assignee not found" });
+      if (!canAssignTaskToUser(req.user, targetUser, project)) {
+        return res.status(403).json({ message: "You cannot assign tasks to this user outside your scope." });
+      }
+    }
+
     const task = new Task(req.body);
     const savedTask = await task.save();
     const serialized = savedTask.toJSON();
@@ -112,10 +128,33 @@ export const createTask = async (req, res, next) => {
 
 export const updateTask = async (req, res, next) => {
   try {
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    const assigneeName = req.body.assigneeName || null;
+    let project = null;
+    if (task.projectId) project = await Project.findById(task.projectId);
+
+    if (!canUpdateTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to update this task." });
+    }
+
+    // Assignment re-validation if assignee is being changed
+    if (req.body.assigneeId !== undefined && req.body.assigneeId !== (task.assigneeId ? task.assigneeId.toString() : null)) {
+      if (req.body.assigneeId) {
+        const targetUser = await User.findById(req.body.assigneeId);
+        if (!targetUser) return res.status(404).json({ message: "Assignee not found" });
+        if (!canAssignTaskToUser(req.user, targetUser, project)) {
+          return res.status(403).json({ message: "You cannot assign tasks to this user outside your scope." });
+        }
+      } else {
+        // Unassigning
+        if (!canAssignTaskToUser(req.user, null, project)) {
+          return res.status(403).json({ message: "You cannot unassign this task." });
+        }
+      }
+    }
+
+    task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
     await logActivity({
       actorId: req.user.sub,
@@ -155,8 +194,17 @@ export const updateTask = async (req, res, next) => {
 
 export const deleteTask = async (req, res, next) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    let project = null;
+    if (task.projectId) project = await Project.findById(task.projectId);
+
+    if (!canDeleteTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to delete this task." });
+    }
+
+    await Task.findByIdAndDelete(req.params.id);
     await Comment.deleteMany({ taskId: req.params.id });
     emitToAll("task:deleted", req.params.id);
     res.json({ message: "Task deleted successfully" });
@@ -168,8 +216,17 @@ export const deleteTask = async (req, res, next) => {
 export const moveTaskStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const task = await Task.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    let task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    let project = null;
+    if (task.projectId) project = await Project.findById(task.projectId);
+
+    if (!canMoveTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to move this task." });
+    }
+
+    task = await Task.findByIdAndUpdate(req.params.id, { status }, { new: true });
 
     // Build a rich human-readable status move message
     const statusLabel = status === "Done" ? "completed" : `moved to ${status}`;

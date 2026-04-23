@@ -3,6 +3,7 @@ import Task from "../../models/Task.js";
 import ActivityLog from "../../models/ActivityLog.js";
 import Notification from "../../models/Notification.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
+import { isEmployee, canManageProject, canDeleteProject } from "../../utils/authUtils.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 async function createAndEmitNotification(recipientId, payload) {
@@ -48,6 +49,10 @@ export const getProjectById = async (req, res, next) => {
 
 export const createProject = async (req, res, next) => {
   try {
+    if (isEmployee(req.user)) {
+      return res.status(403).json({ message: "Employees cannot create projects." });
+    }
+
     const project = new Project({ ...req.body, createdBy: req.user.sub });
     const savedProject = await project.save();
     const serialized = savedProject.toJSON();
@@ -100,8 +105,14 @@ export const createProject = async (req, res, next) => {
 
 export const updateProject = async (req, res, next) => {
   try {
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
+
+    if (!canManageProject(req.user, project)) {
+      return res.status(403).json({ message: "You do not have permission to manage this project." });
+    }
+
+    project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
     await logActivity({
       actorId: req.user.sub,
@@ -140,8 +151,14 @@ export const updateProject = async (req, res, next) => {
 
 export const deleteProject = async (req, res, next) => {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
+    const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
+
+    if (!canDeleteProject(req.user, project)) {
+      return res.status(403).json({ message: "You do not have permission to delete this project." });
+    }
+
+    await Project.findByIdAndDelete(req.params.id);
 
     // Cascade: remove all tasks belonging to deleted project
     await Task.deleteMany({ projectId: project._id });
