@@ -14,7 +14,7 @@ import {
 import {
   FolderKanban, CheckSquare, Target, Activity,
   CheckCircle2, AlertTriangle, Clock, Flame,
-  TrendingDown, User, Zap,
+  TrendingDown, User, Zap, MessageSquare, ArrowRight, Radio,
 } from "lucide-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -276,43 +276,62 @@ export default function DashboardPage() {
           </PageCard>
 
           {/* Workspace Telemetry */}
-          <PageCard title="Workspace Telemetry" subtitle="Real-time execution log" className="min-h-[320px]">
-            <div className="relative mt-6 space-y-0 before:absolute before:inset-0 before:ml-[11px] before:h-full before:w-px before:bg-slate-200 dark:before:bg-slate-800">
-              {activity.length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <Activity className="h-8 w-8 text-slate-300 dark:text-slate-700 mb-3" />
-                  <p className="text-sm text-slate-500">No activity recorded yet</p>
+          <PageCard title="Workspace Telemetry" subtitle="Live operational feed" className="min-h-[320px]">
+            {activity.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                  <Radio className="h-6 w-6 text-slate-400 dark:text-slate-600" />
                 </div>
-              ) : (
-                activity.slice(0, 8).map((item) => {
-                  const isTask = item.entityType === "task";
-                  const isProject = item.entityType === "project";
-                  const isComment = item.action?.includes("Comment");
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No activity yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Events will appear here as your team works</p>
+                </div>
+              </div>
+            ) : (
+              <div className="relative mt-4 space-y-0 before:absolute before:inset-0 before:ml-[15px] before:h-full before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+                {activity.slice(0, 10).map((item) => {
+                  // Determine icon + color by action type
                   let Icon = Activity;
-                  let colorClass = "text-slate-500 bg-slate-100 dark:bg-slate-800";
-                  if (isTask) { Icon = CheckSquare; colorClass = "text-indigo-500 bg-indigo-100 dark:bg-indigo-500/20"; }
-                  else if (isProject) { Icon = FolderKanban; colorClass = "text-emerald-500 bg-emerald-100 dark:bg-emerald-500/20"; }
-                  else if (isComment) { Icon = Target; colorClass = "text-amber-500 bg-amber-100 dark:bg-amber-500/20"; }
+                  let iconBg = "bg-slate-100 dark:bg-slate-800";
+                  let iconText = "text-slate-500";
+
+                  const action = item.action || "";
+                  if (action === "Task Completed") {
+                    Icon = CheckCircle2; iconBg = "bg-emerald-100 dark:bg-emerald-500/20"; iconText = "text-emerald-600 dark:text-emerald-400";
+                  } else if (action === "Task Moved") {
+                    Icon = ArrowRight; iconBg = "bg-sky-100 dark:bg-sky-500/20"; iconText = "text-sky-600 dark:text-sky-400";
+                  } else if (action === "Task Created") {
+                    Icon = CheckSquare; iconBg = "bg-indigo-100 dark:bg-indigo-500/20"; iconText = "text-indigo-600 dark:text-indigo-400";
+                  } else if (action === "Task Updated") {
+                    Icon = CheckSquare; iconBg = "bg-violet-100 dark:bg-violet-500/20"; iconText = "text-violet-600 dark:text-violet-400";
+                  } else if (action === "Comment Added") {
+                    Icon = MessageSquare; iconBg = "bg-amber-100 dark:bg-amber-500/20"; iconText = "text-amber-600 dark:text-amber-400";
+                  } else if (action === "Project Created" || action === "Project Updated") {
+                    Icon = FolderKanban; iconBg = "bg-emerald-100 dark:bg-emerald-500/20"; iconText = "text-emerald-600 dark:text-emerald-400";
+                  }
+
+                  // Build human-readable text: prefer rich metadata text
+                  const displayText = item.metadata?.richText
+                    || (item.actorName && item.entityName
+                        ? `${item.actorName} ${(action || "").toLowerCase()} "${item.entityName}"`
+                        : item.action || "System event");
 
                   return (
                     <div key={item.id} className="relative flex items-start gap-3 mb-5 last:mb-0">
-                      <div className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-white dark:border-slate-900 ${colorClass}`}>
-                        <Icon className="h-3 w-3" />
+                      <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white dark:border-slate-900 ${iconBg}`}>
+                        <Icon className={`h-3.5 w-3.5 ${iconText}`} />
                       </div>
-                      <div className="flex-1 pt-0.5">
+                      <div className="flex-1 pt-0.5 min-w-0">
                         <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">
-                          <span className="font-semibold">{item.actorName || "System"}</span>
-                          <span className="font-normal text-slate-500 dark:text-slate-400"> {item.action?.toLowerCase()}</span>
-                          {item.metadata?.taskTitle ? <span className="font-semibold text-indigo-600 dark:text-indigo-400"> "{item.metadata.taskTitle}"</span> : null}
-                          {item.metadata?.projectName ? <span className="font-semibold text-emerald-600 dark:text-emerald-400"> "{item.metadata.projectName}"</span> : null}
+                          {displayText}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{relativeTime(item.createdAt)}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(item.createdAt)}</p>
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </PageCard>
         </div>
       </div>

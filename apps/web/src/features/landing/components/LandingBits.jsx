@@ -164,8 +164,8 @@ export function HeroSection({ isLoggedIn }) {
           >
             {isLoggedIn ? "Go to Dashboard" : "Start your workspace"}
           </a>
-          <a href="/dashboard" className="text-sm font-semibold leading-6 text-white hover:text-indigo-300 transition group flex items-center gap-1">
-            Try interactive demo <span className="group-hover:translate-x-1 xl:transition-transform" aria-hidden="true">→</span>
+          <a href="#features" className="text-sm font-semibold leading-6 text-white hover:text-indigo-300 transition group flex items-center gap-1">
+            See features <span className="group-hover:translate-x-1 xl:transition-transform" aria-hidden="true">→</span>
           </a>
         </motion.div>
       </div>
@@ -192,7 +192,7 @@ export function FeatureGrid() {
   ];
 
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 bg-slate-950">
+    <section id="features" className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 bg-slate-950">
       <div className="mx-auto max-w-2xl lg:text-center">
         <h2 className="text-base font-semibold leading-7 text-indigo-400">Deploy Faster</h2>
         <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Everything your delivery teams need</p>
@@ -225,7 +225,7 @@ export function FeatureGrid() {
 
 export function RolesSection() {
   return (
-    <section className="relative z-10 bg-slate-900 py-24 sm:py-32">
+    <section id="roles" className="relative z-10 bg-slate-900 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Built for every role</h2>

@@ -4,7 +4,7 @@ import ActivityLog from "../../models/ActivityLog.js";
 import Notification from "../../models/Notification.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 async function createAndEmitNotification(recipientId, payload) {
   if (!recipientId) return;
   try {
@@ -13,6 +13,16 @@ async function createAndEmitNotification(recipientId, payload) {
     return notif.toJSON();
   } catch (err) {
     console.error("[createAndEmitNotification] failed:", err.message);
+  }
+}
+
+async function logActivity(payload) {
+  try {
+    const log = await ActivityLog.create(payload);
+    emitToAll("activity:created", log.toJSON());
+    return log.toJSON();
+  } catch (err) {
+    console.error("[logActivity] failed:", err.message);
   }
 }
 
@@ -42,21 +52,21 @@ export const createProject = async (req, res, next) => {
     const savedProject = await project.save();
     const serialized = savedProject.toJSON();
 
-    await ActivityLog.create({
+    await logActivity({
       actorId: req.user.sub,
       actorName: req.user.name,
       action: "Project Created",
       entityType: "project",
       entityId: savedProject._id,
       entityName: savedProject.name,
-      metadata: { projectName: savedProject.name },
+      metadata: {
+        projectName: savedProject.name,
+        richText: `${req.user.name} created project "${savedProject.name}"`,
+      },
     });
 
     emitToAll("project:created", { project: serialized });
 
-    // Always notify the CREATOR about the project they created.
-    // This ensures the notification page is populated even in single-user
-    // admin scenarios where the creator and owner are the same person.
     await createAndEmitNotification(req.user.sub, {
       title: "Project Created",
       message: `You created project "${savedProject.name}"`,
@@ -68,7 +78,6 @@ export const createProject = async (req, res, next) => {
       entityName: savedProject.name,
     });
 
-    // If a separate owner was designated, notify them too.
     if (savedProject.ownerId && savedProject.ownerId.toString() !== req.user.sub) {
       await createAndEmitNotification(savedProject.ownerId, {
         title: "New Project Assignment",
@@ -93,9 +102,23 @@ export const updateProject = async (req, res, next) => {
   try {
     const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!project) return res.status(404).json({ message: "Project not found" });
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Project Updated",
+      entityType: "project",
+      entityId: project._id,
+      entityName: project.name,
+      metadata: {
+        projectName: project.name,
+        status: project.status,
+        richText: `${req.user.name} updated project "${project.name}"`,
+      },
+    });
+
     emitToAll("project:updated", { project: project.toJSON() });
 
-    // Notify the owner if someone else updated their project.
     if (project.ownerId && project.ownerId.toString() !== req.user.sub) {
       await createAndEmitNotification(project.ownerId, {
         title: "Project Updated",

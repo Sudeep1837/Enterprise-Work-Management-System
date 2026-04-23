@@ -175,6 +175,19 @@ const workSlice = createSlice({
         state.notifications.unshift(action.payload);
       }
     },
+    socketActivityCreated: (state, action) => {
+      // Deduplicate and cap at 30 items
+      const aid = action.payload.id || action.payload._id?.toString();
+      const exists = state.activity.some(
+        (a) => (a.id || a._id?.toString()) === aid
+      );
+      if (!exists) {
+        state.activity.unshift(action.payload);
+        if (state.activity.length > 30) {
+          state.activity = state.activity.slice(0, 30);
+        }
+      }
+    },
     clearNotificationsSync: (state) => {
       state.notifications = [];
     }
@@ -286,6 +299,7 @@ export const {
   socketTaskDeleted,
   socketCommentAdded,
   socketNotificationCreated,
+  socketActivityCreated,
   clearNotificationsSync,
 } = workSlice.actions;
 

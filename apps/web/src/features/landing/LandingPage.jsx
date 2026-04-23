@@ -12,7 +12,7 @@ export default function LandingPage() {
       <FeatureGrid />
       
       {/* Premium CTA Section */}
-      <section className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 bg-slate-950">
+      <section id="cta" className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 bg-slate-950">
         <motion.div 
           whileHover={{ y: -4 }} 
           className="relative isolate overflow-hidden rounded-3xl bg-slate-900 px-6 py-24 text-center shadow-2xl sm:rounded-3xl sm:px-16 border border-white/10"

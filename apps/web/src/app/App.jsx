@@ -7,7 +7,7 @@ import {
   fetchUsers, fetchProjects, fetchTasks, fetchNotifications, fetchActivity,
   socketProjectUpserted, socketProjectDeleted,
   socketTaskUpserted, socketTaskDeleted,
-  socketCommentAdded, socketNotificationCreated
+  socketCommentAdded, socketNotificationCreated, socketActivityCreated
 } from "../store/workSlice";
 import { fetchMeThunk } from "../store/authSlice";
 import { connectSocket, disconnectSocket } from "../services/socketClient";
@@ -54,6 +54,10 @@ function App() {
         ? `${payload.actorName} ${payload.action} "${payload.entityName}"`
         : payload.message || payload.title || "New notification";
       toast.info(toastMsg, { icon: "🔔" });
+    });
+
+    socket.on("activity:created", (payload) => {
+      dispatch(socketActivityCreated(payload));
     });
     
     return () => disconnectSocket();

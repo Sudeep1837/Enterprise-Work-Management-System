@@ -8,8 +8,6 @@ import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
 
 /**
  * Create a notification document and emit it to the recipient's socket room.
- * Always creates the notification regardless of whether actor === recipient
- * (self-assignment is a legitimate case: "You were assigned to X").
  */
 async function createAndEmitNotification(recipientId, payload) {
   if (!recipientId) return;
@@ -23,6 +21,19 @@ async function createAndEmitNotification(recipientId, payload) {
     return serialized;
   } catch (err) {
     console.error("[createAndEmitNotification] failed:", err.message);
+  }
+}
+
+/**
+ * Create an ActivityLog entry and emit it to all connected clients.
+ */
+async function logActivity(payload) {
+  try {
+    const log = await ActivityLog.create(payload);
+    emitToAll("activity:created", log.toJSON());
+    return log.toJSON();
+  } catch (err) {
+    console.error("[logActivity] failed:", err.message);
   }
 }
 
@@ -54,21 +65,31 @@ export const createTask = async (req, res, next) => {
     const savedTask = await task.save();
     const serialized = savedTask.toJSON();
 
-    await ActivityLog.create({
+    // Determine assignee name for richer activity text
+    const assigneeName = req.body.assigneeName || null;
+    const activityAction = assigneeName
+      ? `assigned "${savedTask.title}" to ${assigneeName}`
+      : `created task "${savedTask.title}"`;
+
+    await logActivity({
       actorId: req.user.sub,
       actorName: req.user.name,
       action: "Task Created",
       entityType: "task",
       entityId: savedTask._id,
       entityName: savedTask.title,
-      metadata: { taskTitle: savedTask.title },
+      metadata: {
+        taskTitle: savedTask.title,
+        assigneeName: assigneeName || "Unassigned",
+        projectName: req.body.projectName || "",
+        richText: assigneeName
+          ? `${req.user.name} assigned "${savedTask.title}" to ${assigneeName}`
+          : `${req.user.name} created task "${savedTask.title}"`,
+      },
     });
 
     emitToAll("task:created", serialized);
 
-    // Always notify the assignee — including self-assignment.
-    // This ensures the actor (admin assigning to themselves) also gets
-    // the notification on their Notifications page.
     if (savedTask.assigneeId) {
       await createAndEmitNotification(savedTask.assigneeId, {
         title: "New Task Assignment",
@@ -94,10 +115,25 @@ export const updateTask = async (req, res, next) => {
     const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!task) return res.status(404).json({ message: "Task not found" });
 
+    const assigneeName = req.body.assigneeName || null;
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Task Updated",
+      entityType: "task",
+      entityId: task._id,
+      entityName: task.title,
+      metadata: {
+        taskTitle: task.title,
+        assigneeName: assigneeName,
+        projectName: req.body.projectName || task.projectName || "",
+        richText: `${req.user.name} updated task "${task.title}"`,
+      },
+    });
+
     emitToAll("task:updated", task.toJSON());
 
-    // Notify assignee when someone else updates their task.
-    // Also notify if actor is the assignee (they may want confirmation).
     if (task.assigneeId && task.assigneeId.toString() !== req.user.sub) {
       await createAndEmitNotification(task.assigneeId, {
         title: "Task Updated",
@@ -135,9 +171,27 @@ export const moveTaskStatus = async (req, res, next) => {
     const task = await Task.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!task) return res.status(404).json({ message: "Task not found" });
 
+    // Build a rich human-readable status move message
+    const statusLabel = status === "Done" ? "completed" : `moved to ${status}`;
+    const richText = `${req.user.name} ${statusLabel} "${task.title}"`;
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: status === "Done" ? "Task Completed" : "Task Moved",
+      entityType: "task",
+      entityId: task._id,
+      entityName: task.title,
+      metadata: {
+        taskTitle: task.title,
+        fromStatus: task.status,
+        toStatus: status,
+        richText,
+      },
+    });
+
     emitToAll("task:moved", task.toJSON());
 
-    // Notify assignee when their task is moved by someone else.
     if (task.assigneeId && task.assigneeId.toString() !== req.user.sub) {
       await createAndEmitNotification(task.assigneeId, {
         title: "Task Status Changed",
@@ -151,13 +205,11 @@ export const moveTaskStatus = async (req, res, next) => {
       });
     }
 
-    // Also notify the ACTOR when they move a task (self-confirmation).
-    // This ensures solo-user / admin testing still populates the page.
     if (task.assigneeId && task.assigneeId.toString() === req.user.sub) {
       await createAndEmitNotification(task.assigneeId, {
-        title: "Task Moved",
-        message: `You moved "${task.title}" to ${status}`,
-        type: "success",
+        title: status === "Done" ? "Task Completed" : "Task Moved",
+        message: `You ${statusLabel} "${task.title}"`,
+        type: status === "Done" ? "success" : "info",
         relatedEntityType: "task",
         relatedEntityId: task._id,
         actorName: req.user.name,
@@ -186,10 +238,24 @@ export const addComment = async (req, res, next) => {
     emitToAll("comment:added", savedComment.toJSON());
 
     const task = await Task.findById(req.params.id);
-    if (task && task.assigneeId) {
-      // Always notify the assignee about a new comment (even if they wrote it —
-      // unlikely but harmless; real apps can filter self-comments if desired).
-      if (task.assigneeId.toString() !== req.user.sub) {
+
+    // Log activity for comment regardless of who wrote it
+    if (task) {
+      await logActivity({
+        actorId: req.user.sub,
+        actorName: req.user.name,
+        action: "Comment Added",
+        entityType: "task",
+        entityId: task._id,
+        entityName: task.title,
+        metadata: {
+          taskTitle: task.title,
+          commentPreview: content.length > 60 ? content.slice(0, 60) + "…" : content,
+          richText: `${req.user.name} commented on "${task.title}"`,
+        },
+      });
+
+      if (task.assigneeId && task.assigneeId.toString() !== req.user.sub) {
         await createAndEmitNotification(task.assigneeId, {
           title: "New Comment",
           message: `${req.user.name} commented on "${task.title}"`,
