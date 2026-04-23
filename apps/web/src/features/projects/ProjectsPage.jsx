@@ -9,10 +9,12 @@ import { deleteProjectAsync, createProject, updateProject } from "../../store/wo
 import { selectProjectHealth } from "../../store/selectors";
 import ProjectForm from "./components/ProjectForm";
 import { FolderKanban, Plus, Search } from "lucide-react";
+import { canDeleteProject, canCreateProject } from "../../lib/permissions";
 
 export default function ProjectsPage() {
   const dispatch = useDispatch();
   const projectHealth = useSelector(selectProjectHealth);
+  const currentUser = useSelector((state) => state.auth.user);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updatedAt");
   const [editing, setEditing] = useState(null);
@@ -51,9 +53,11 @@ export default function ProjectsPage() {
         subtitle="Workspace organizational containers"
         icon={FolderKanban}
         actions={
-          <Button onClick={() => setEditing({ status: "Planning" })}>
-            <Plus className="h-4 w-4" /> New Project
-          </Button>
+          canCreateProject(currentUser) && (
+            <Button onClick={() => setEditing({ status: "Planning" })}>
+              <Plus className="h-4 w-4" /> New Project
+            </Button>
+          )
         }
       />
 
@@ -131,7 +135,9 @@ export default function ProjectsPage() {
                   <td className="whitespace-nowrap px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
-                      <Button variant="ghost" onClick={() => setDeleting(item)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10">Delete</Button>
+                      {canDeleteProject(currentUser, item) && (
+                        <Button variant="ghost" onClick={() => setDeleting(item)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10">Delete</Button>
+                      )}
                     </div>
                   </td>
                 </tr>

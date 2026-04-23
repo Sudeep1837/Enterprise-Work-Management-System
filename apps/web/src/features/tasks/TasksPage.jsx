@@ -11,12 +11,15 @@ import { selectDashboardMetrics } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import { CheckSquare, Plus, Search, Clock, User, Sparkles } from "lucide-react";
+import { canDeleteTask, canCreateProject } from "../../lib/permissions";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
   const tasks = useSelector((state) => state.work.tasks);
   const users = useSelector((state) => state.work.users);
+  const projects = useSelector((state) => state.work.projects);
   const metrics = useSelector(selectDashboardMetrics);
+  const currentUser = useSelector((state) => state.auth.user);
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updatedAt");
@@ -215,7 +218,9 @@ export default function TasksPage() {
                     </div>
                     <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5 sm:border-0 sm:pt-0">
                       <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setEditing(task); }}>Edit</Button>
-                      <Button variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleting(task); }} className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">Delete</Button>
+                      {canDeleteTask(currentUser, task, projects.find(p => (p.id || p._id?.toString()) === (task.projectId?._id?.toString() || task.projectId?.toString()))) && (
+                        <Button variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleting(task); }} className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">Delete</Button>
+                      )}
                     </div>
                   </motion.article>
                 );

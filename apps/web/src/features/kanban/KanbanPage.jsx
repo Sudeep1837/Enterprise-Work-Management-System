@@ -8,9 +8,13 @@ import { MetricsStrip, StripMetric } from "../common/components/Analytics";
 import { selectKanbanMetrics } from "../../store/selectors";
 import { Kanban, GripHorizontal, LayoutTemplate } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "react-toastify";
+import { canMoveTask } from "../../lib/permissions";
 
 export default function KanbanPage() {
   const tasks = useSelector((state) => state.work.tasks);
+  const projects = useSelector((state) => state.work.projects);
+  const currentUser = useSelector((state) => state.auth.user);
   const kMetrics = useSelector(selectKanbanMetrics);
   const dispatch = useDispatch();
   const grouped = useMemo(
@@ -37,7 +41,20 @@ export default function KanbanPage() {
       <DndContext
         onDragEnd={({ active, over }) => {
           if (!over) return;
-          dispatch(moveTaskStatus({ id: active.id, status: over.id }));
+          
+          const task = tasks.find(t => (t.id || t._id?.toString()) === active.id?.toString());
+          if (!task) return;
+
+          const project = projects.find(p => (p.id || p._id?.toString()) === (task.projectId?._id?.toString() || task.projectId?.toString()));
+          
+          if (!canMoveTask(currentUser, task, project)) {
+            toast.error("You don't have permission to move this task.");
+            return;
+          }
+
+          if (task.status !== over.id) {
+            dispatch(moveTaskStatus({ id: active.id, status: over.id }));
+          }
         }}
       >
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 pt-2">
