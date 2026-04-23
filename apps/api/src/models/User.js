@@ -5,8 +5,12 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
+    // Role is always lowercase internally: admin | manager | employee
     role: { type: String, enum: ["admin", "manager", "employee"], default: "employee" },
-    team: { type: String, default: "General" },
+    // Team the user belongs to (required for manager and employee)
+    team: { type: String, default: "" },
+    // For employees: the manager they report to (must be a user with role="manager")
+    managerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     avatar: { type: String, default: "" },
     active: { type: Boolean, default: true },
     status: { type: String, enum: ["online", "offline", "busy"], default: "offline" },

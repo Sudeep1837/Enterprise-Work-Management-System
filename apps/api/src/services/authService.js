@@ -2,11 +2,37 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
 
+/**
+ * Sanitize a user document for API responses.
+ * Includes team and managerId. Renames active → isActive for frontend consistency.
+ * Safe for both populated and unpopulated managerId.
+ */
 export function sanitizeUser(user) {
   const obj = user.toJSON ? user.toJSON() : { ...user };
   const { passwordHash, active, ...rest } = obj;
-  // Normalize DB `active` -> frontend `isActive` to keep shape consistent
-  return { ...rest, isActive: active ?? true };
+
+  // Normalize managerId: handle populated object, ObjectId, or null
+  let managerIdOut = null;
+  if (user.managerId) {
+    if (typeof user.managerId === "object" && user.managerId.name) {
+      // Populated
+      managerIdOut = {
+        id: user.managerId._id?.toString() || user.managerId.id,
+        name: user.managerId.name,
+        email: user.managerId.email,
+      };
+    } else {
+      // Raw ObjectId or string — keep as string, frontend will handle gracefully
+      managerIdOut = user.managerId.toString();
+    }
+  }
+
+  return {
+    ...rest,
+    isActive: active ?? true,
+    team: user.team || "",
+    managerId: managerIdOut,
+  };
 }
 
 export async function signup(payload) {
@@ -14,8 +40,8 @@ export async function signup(payload) {
   const email = (payload.email || "").trim().toLowerCase();
   const password = payload.password || "";
   if (!name || !email || !password) throw new Error("Name, email, and password are required");
-  
-  const existingUser = await User.findOne({ email: email.toLowerCase() });
+
+  const existingUser = await User.findOne({ email });
   if (existingUser) throw new Error("User already exists");
 
   const salt = await bcrypt.genSalt(10);
@@ -23,9 +49,10 @@ export async function signup(payload) {
 
   const user = new User({
     name,
-    email: email.toLowerCase(),
+    email,
     passwordHash,
-    role: role.toLowerCase(),
+    role: role.toLowerCase(),  // always lowercase
+    team: payload.team || "",
     active: true,
   });
 
@@ -38,13 +65,13 @@ export async function login(payload) {
   const email = (payload.email || "").trim().toLowerCase();
   const password = payload.password || "";
   const user = await User.findOne({ email });
-  
+
   if (!user) throw new Error("Invalid credentials");
   if (!user.active) throw new Error("User is deactivated");
 
   const matches = await bcrypt.compare(password, user.passwordHash);
   if (!matches) throw new Error("Invalid credentials");
-  
+
   user.lastActiveAt = new Date();
   await user.save();
 
@@ -52,7 +79,8 @@ export async function login(payload) {
 }
 
 export async function getCurrentUser(id) {
-  const user = await User.findById(id);
+  // Populate managerId for /me endpoint too
+  const user = await User.findById(id).populate("managerId", "name email");
   if (!user) return null;
   return sanitizeUser(user);
 }
