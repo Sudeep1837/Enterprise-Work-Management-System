@@ -6,6 +6,7 @@ import { TASK_PRIORITIES, TASK_STATUSES, TASK_TYPES } from "../../../constants/r
 import { SelectInput, TextInput } from "../../common/forms/FormFields";
 import { Button, EmptyState } from "../../common/components/UI";
 import { FolderKanban } from "lucide-react";
+import { canAssignTaskToUser } from "../../../lib/permissions";
 
 const schema = yup.object({
   title: yup.string().required("Title is required"),
@@ -21,14 +22,21 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
   const users = useSelector((state) => state.work.users || []);
   const projects = useSelector((state) => state.work.projects || []);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const currentUser = useSelector((state) => state.auth.user);
+
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(schema),
     values: initialValues,
   });
 
+  const selectedProjectId = watch("projectId");
+  const selectedProject = projects.find(p => (p.id || p._id?.toString()) === selectedProjectId);
+
   const assigneeOptions = [
     { value: "", label: "Unassigned" },
-    ...users.map(u => ({ value: u.id, label: u.name }))
+    ...users
+      .filter(u => canAssignTaskToUser(currentUser, u, selectedProject))
+      .map(u => ({ value: u.id || u._id?.toString(), label: u.name }))
   ];
 
   const projectOptions = [
