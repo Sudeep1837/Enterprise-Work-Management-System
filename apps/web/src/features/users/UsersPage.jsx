@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import { PageCard, PageHeader, Button, Badge, TableShell, EmptyState } from "../common/components/UI";
 import { InsightCard } from "../common/components/Analytics";
 import { applyTextFilter } from "../common/utils/filtering";
@@ -15,11 +16,37 @@ export default function UsersPage() {
   
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null);
+  const [updatedUserId, setUpdatedUserId] = useState(null);
+  
+  const userRefs = useRef({});
+  const highlightTimer = useRef(null);
 
-  // Load users on mount to ensure fresh data
+  const setRef = useCallback((id, el) => {
+    if (el) userRefs.current[id] = el;
+    else delete userRefs.current[id];
+  }, []);
+
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!updatedUserId) return;
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+
+    const scrollTimer = setTimeout(() => {
+      const el = userRefs.current[updatedUserId];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+
+    highlightTimer.current = setTimeout(() => {
+      setUpdatedUserId(null);
+    }, 3000);
+
+    return () => clearTimeout(scrollTimer);
+  }, [updatedUserId]);
   
   // Create an active map for joining workload metrics onto base users
   const activeMap = useMemo(() => {
@@ -106,7 +133,15 @@ export default function UsersPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-white/10">
               {filtered.map((user) => (
-                <tr key={user.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                <tr 
+                  key={user.id} 
+                  ref={(el) => setRef(user.id || user._id, el)}
+                  className={`transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${
+                    (user.id || user._id) === updatedUserId
+                      ? "bg-indigo-50/80 dark:bg-indigo-900/20 shadow-sm"
+                      : ""
+                  }`}
+                >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
@@ -146,7 +181,12 @@ export default function UsersPage() {
                         className={user.isActive ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10" : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"} 
                         onClick={() => {
                           const idToUpdate = user.id || user._id;
-                          dispatch(updateUserAsync({ id: idToUpdate, active: !user.isActive }));
+                          dispatch(updateUserAsync({ id: idToUpdate, active: !user.isActive }))
+                            .unwrap()
+                            .then(() => {
+                              setUpdatedUserId(idToUpdate);
+                              toast.success(`User ${!user.isActive ? "activated" : "deactivated"} successfully`);
+                            });
                         }}
                       >
                         {user.isActive ? "Deactivate" : "Activate"}
@@ -173,13 +213,21 @@ export default function UsersPage() {
               if (editing.id || editing._id) {
                 dispatch(updateUserAsync({ id: editing.id || editing._id, ...payload }))
                   .unwrap()
-                  .then(() => setEditing(null))
-                  .catch((err) => console.error("Failed to update user:", err));
+                  .then(() => {
+                    setEditing(null);
+                    setUpdatedUserId(editing.id || editing._id);
+                    toast.success("User updated successfully");
+                  })
+                  .catch((err) => toast.error(`Failed to update user: ${err.message || err}`));
               } else {
                 dispatch(createUserAsync(payload))
                   .unwrap()
-                  .then(() => setEditing(null))
-                  .catch((err) => console.error("Failed to create user:", err));
+                  .then((res) => {
+                    setEditing(null);
+                    setUpdatedUserId(res.id || res._id);
+                    toast.success("User created successfully");
+                  })
+                  .catch((err) => toast.error(`Failed to create user: ${err.message || err}`));
               }
             }}
           />
