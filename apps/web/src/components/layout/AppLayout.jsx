@@ -275,17 +275,17 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-500/30 dark:bg-slate-950 dark:text-slate-100 flex">
 
-      {/* ── Desktop Sidebar ────────────────────────────────────────────────── */}
+      {/* ── Desktop Sidebar ─ */}
       <motion.aside
         initial={{ x: -28, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="sticky top-0 z-40 hidden h-screen w-72 flex-col border-r border-slate-200/60 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/40 lg:flex"
       >
-        <SidebarContent onNavClick={() => {}} />
+        <SidebarContent onNavClick={() => { }} />
       </motion.aside>
 
-      {/* ── Mobile Sidebar Overlay + Drawer ───────────────────────────────── */}
+      {/* ── Mobile Sidebar Overlay + Drawer ─*/}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -321,7 +321,7 @@ export default function AppLayout() {
         )}
       </AnimatePresence>
 
-      {/* ── Main Content Area ─────────────────────────────────────────────── */}
+      {/*  Main Content Area  */}
       <div className="flex flex-1 flex-col min-w-0">
 
         {/* Top Navbar */}
