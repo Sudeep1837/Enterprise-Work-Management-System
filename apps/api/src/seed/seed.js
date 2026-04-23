@@ -36,6 +36,7 @@ const runSeed = async () => {
       email: "admin@demo.com",
       passwordHash: passwordHash1,
       role: "admin",
+      team: "Engineering",
       active: true,
       avatar: "https://i.pravatar.cc/150?u=admin",
     });
@@ -45,6 +46,7 @@ const runSeed = async () => {
       email: "manager@demo.com",
       passwordHash: passwordHash2,
       role: "manager",
+      team: "Engineering",
       active: true,
       avatar: "https://i.pravatar.cc/150?u=manager",
     });
@@ -54,6 +56,7 @@ const runSeed = async () => {
       email: "employee@demo.com",
       passwordHash: passwordHash3,
       role: "employee",
+      team: "Marketing",
       active: true,
       avatar: "https://i.pravatar.cc/150?u=employee",
     });
