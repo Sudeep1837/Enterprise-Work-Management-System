@@ -55,6 +55,22 @@ export const canCreateProject = (user) => {
   return isAdmin(user) || isManager(user);
 };
 
+/**
+ * Can this user create/assign tasks scoped to this project?
+ * Admin: any project. Manager: only projects they own. Employee: any (backend guards).
+ */
+export const canUseProjectForTask = (user, project) => {
+  if (!user || !project) return false;
+  if (isAdmin(user)) return true;
+  if (isManager(user)) {
+    const userId  = user.id || user._id?.toString();
+    const ownerId = project.ownerId?._id || project.ownerId;
+    return ownerId != null && ownerId.toString() === userId?.toString();
+  }
+  // Employee sees all projects (backend enforces actual assignment scope)
+  return true;
+};
+
 // ─── Task Permissions ─────────────────────────────────────────────────────────
 export const canDeleteTask = (user, task, project) => {
   if (!user || !task) return false;

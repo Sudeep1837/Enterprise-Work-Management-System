@@ -6,7 +6,7 @@ import { TASK_PRIORITIES, TASK_STATUSES, TASK_TYPES } from "../../../constants/r
 import { SelectInput, TextInput } from "../../common/forms/FormFields";
 import { Button, EmptyState } from "../../common/components/UI";
 import { FolderKanban, Info } from "lucide-react";
-import { canAssignTaskToUser, isAdmin, isManager, isEmployee } from "../../../lib/permissions";
+import { canAssignTaskToUser, isAdmin, isManager, isEmployee, canUseProjectForTask } from "../../../lib/permissions";
 
 const schema = yup.object({
   title: yup.string().required("Title is required"),
@@ -41,9 +41,13 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
       .map((u) => ({ value: u.id || u._id?.toString(), label: u.name })),
   ];
 
+  // Filter projects by the current user's management scope:
+  // Admin: all projects. Manager: only projects they own. Employee: all (backend guards).
   const projectOptions = [
     { value: "", label: "Select a project..." },
-    ...projects.map((p) => ({ value: p.id || p._id, label: p.name })),
+    ...projects
+      .filter((p) => canUseProjectForTask(currentUser, p))
+      .map((p) => ({ value: p.id || p._id, label: p.name })),
   ];
 
   // Helper text explaining assignee scope to the user

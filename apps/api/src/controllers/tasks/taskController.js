@@ -5,7 +5,7 @@ import Notification from "../../models/Notification.js";
 import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canEditUser } from "../../utils/authUtils.js";
+import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canEditUser, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +68,18 @@ export const createTask = async (req, res, next) => {
     const { assigneeId, projectId } = req.body;
     let project = null;
     if (projectId) project = await Project.findById(projectId);
+
+    // Bug 1 fix: manager can only create tasks in projects they own/manage
+    if (isManager(req.user) && projectId) {
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      if (!canManageProject(req.user, project)) {
+        return res.status(403).json({
+          message: "You do not have permission to manage this project.",
+        });
+      }
+    }
 
     if (assigneeId) {
       const targetUser = await User.findById(assigneeId);
@@ -136,6 +148,17 @@ export const updateTask = async (req, res, next) => {
 
     if (!canUpdateTask(req.user, task, project)) {
       return res.status(403).json({ message: "You do not have permission to update this task." });
+    }
+
+    // Bug 2 fix: employee field whitelist — only status and attachments allowed
+    if (isEmployee(req.user)) {
+      const EMPLOYEE_ALLOWED = new Set(["status", "attachments"]);
+      const blocked = Object.keys(req.body).filter((k) => !EMPLOYEE_ALLOWED.has(k));
+      if (blocked.length > 0) {
+        return res.status(403).json({
+          message: "Employees can only update status and attachments on their own assigned tasks.",
+        });
+      }
     }
 
     // Assignment re-validation if assignee is being changed
