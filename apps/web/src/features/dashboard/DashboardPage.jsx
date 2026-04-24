@@ -10,6 +10,7 @@ import {
   selectOverdueCriticalTasks,
   selectBottleneckStage,
   selectMyTasks,
+  selectDueSoonTasks,
 } from "../../store/selectors";
 import {
   FolderKanban, CheckSquare, Target, Activity,
@@ -123,6 +124,7 @@ export default function DashboardPage() {
   const overdueCritical = useSelector(selectOverdueCriticalTasks);
   const bottleneck     = useSelector(selectBottleneckStage);
   const myTasks        = useSelector(selectMyTasks);
+  const dueSoon        = useSelector(selectDueSoonTasks);
   const activity       = useSelector((state) => state.work.activity);
   const authUser       = useSelector((state) => state.auth.user);
 
@@ -149,54 +151,73 @@ export default function DashboardPage() {
         icon={isAdmin ? Target : isManager ? FolderKanban : CheckSquare}
       />
 
-      {/* ── Insight KPI Row ─────────────────────────────────────────────── */}
+      {/* ── Insight KPI Row ──────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <InsightCard
-          title={isAdmin || isManager ? "Active Execution" : "My Open Tasks"}
-          value={isAdmin || isManager ? metrics.pendingTasks : myTasks.length}
-          insight={
-            metrics.overdueTasks > 0
-              ? `${metrics.overdueTasks} tasks overdue`
-              : "All on schedule"
-          }
-          icon={Activity}
-          trend={metrics.completionRate > 50 ? 12 : -4}
-        />
-        <InsightCard
-          title="Completion Rate"
-          value={`${metrics.completionRate}%`}
-          insight={`${metrics.completedThisWeek} delivered this week`}
-          icon={CheckCircle2}
-          trend={metrics.completedThisWeek > 0 ? 8 : 0}
-        />
         {isAdmin || isManager ? (
-          <InsightCard
-            title="Team Workload"
-            value={highestWorkload ? highestWorkload.activeTaskCount : 0}
-            insight={highestWorkload ? `Highest: ${highestWorkload.name}` : "No assignments"}
-            icon={User}
-          />
+          <>
+            <InsightCard
+              title="Active Execution"
+              value={metrics.pendingTasks}
+              insight={metrics.overdueTasks > 0 ? `${metrics.overdueTasks} tasks overdue` : "All on schedule"}
+              icon={Activity}
+              trend={metrics.completionRate > 50 ? 12 : -4}
+            />
+            <InsightCard
+              title="Completion Rate"
+              value={`${metrics.completionRate}%`}
+              insight={`${metrics.completedThisWeek} delivered this week`}
+              icon={CheckCircle2}
+              trend={metrics.completedThisWeek > 0 ? 8 : 0}
+            />
+            <InsightCard
+              title="Team Workload"
+              value={highestWorkload ? highestWorkload.activeTaskCount : 0}
+              insight={highestWorkload ? `Highest: ${highestWorkload.name}` : "No assignments"}
+              icon={User}
+            />
+            <InsightCard
+              title="Bottleneck Stage"
+              value={bottleneck.count}
+              insight={bottleneck.status ? `${bottleneck.count} tasks in "${bottleneck.status}"` : "No bottleneck"}
+              icon={Zap}
+              trend={bottleneck.count > 3 ? -8 : 0}
+            />
+          </>
         ) : (
-          <InsightCard
-            title="Completed Tasks"
-            value={metrics.completedTasks}
-            insight="Total tasks delivered"
-            icon={CheckCircle2}
-            trend={8}
-          />
+          /* Employee: personal-focused KPI row */
+          <>
+            <InsightCard
+              title="My Open Tasks"
+              value={myTasks.length}
+              insight={myTasks.length === 0 ? "All clear! 🎉" : `${metrics.overdueTasks} overdue`}
+              icon={Activity}
+              trend={metrics.overdueTasks > 0 ? -6 : 4}
+            />
+            <InsightCard
+              title="Completed Tasks"
+              value={metrics.completedTasks}
+              insight={`${metrics.completedThisWeek} this week`}
+              icon={CheckCircle2}
+              trend={metrics.completedThisWeek > 0 ? 10 : 0}
+            />
+            <InsightCard
+              title="Due This Week"
+              value={dueSoon.length}
+              insight={dueSoon.length === 0 ? "Nothing urgent" : `Next: ${dueSoon[0]?.title?.slice(0, 18)}…`}
+              icon={Clock}
+              trend={dueSoon.length > 3 ? -5 : 0}
+            />
+            <InsightCard
+              title="Completion Rate"
+              value={`${metrics.completionRate}%`}
+              insight="Personal delivery rate"
+              icon={Zap}
+              trend={metrics.completionRate > 60 ? 8 : 0}
+            />
+          </>
         )}
-        <InsightCard
-          title="Bottleneck Stage"
-          value={bottleneck.count}
-          insight={
-            bottleneck.status
-              ? `${bottleneck.count} tasks in "${bottleneck.status}"`
-              : "No bottleneck"
-          }
-          icon={Zap}
-          trend={bottleneck.count > 3 ? -8 : 0}
-        />
       </div>
+
 
       {/* ── Role-specific risk / personal view ──────────────────────────── */}
       {(isAdmin || isManager) && (atRisk.length > 0 || overdueCritical.length > 0) && (

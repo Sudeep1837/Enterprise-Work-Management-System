@@ -65,13 +65,32 @@ export const createProject = async (req, res, next) => {
       return res.status(403).json({ message: "Employees cannot create projects." });
     }
 
-    // Bug 3 fix: if manager creates a project, force ownership to themselves.
-    // Admin may freely set any ownerId.
     let projectData = { ...req.body, createdBy: req.user.sub };
+
     if (isManager(req.user)) {
+      // Managers always own what they create — force ownerId.
       projectData.ownerId = req.user.sub;
-      // Default owner display name to current manager if not set
       if (!projectData.owner) projectData.owner = req.user.name;
+    } else if (isAdmin(req.user)) {
+      // Admin must pick a valid owner: themselves (admin) or an active manager.
+      // If ownerId not provided, default to the admin themselves.
+      if (!projectData.ownerId) {
+        projectData.ownerId = req.user.sub;
+        if (!projectData.owner) projectData.owner = req.user.name;
+      } else {
+        // Validate the chosen ownerId is an admin or manager, never an employee.
+        const ownerUser = await User.findById(projectData.ownerId).lean();
+        if (!ownerUser) {
+          return res.status(400).json({ message: "Selected project owner does not exist." });
+        }
+        if (!['admin', 'manager'].includes(ownerUser.role)) {
+          return res.status(400).json({
+            message: "Project owner must be an admin or manager, not an employee."
+          });
+        }
+        // Sync display name from DB to prevent client-supplied spoofing.
+        if (!projectData.owner) projectData.owner = ownerUser.name;
+      }
     }
 
     const project = new Project(projectData);
@@ -133,11 +152,23 @@ export const updateProject = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have permission to manage this project." });
     }
 
-    // Bug 3 fix: non-admins cannot transfer project ownership via update.
-    // Strip ownerId from the update body to prevent ownership hijacking.
+    // Non-admins cannot transfer project ownership via update.
     const updateBody = { ...req.body };
     if (!isAdmin(req.user)) {
       delete updateBody.ownerId;
+    } else if (isAdmin(req.user) && updateBody.ownerId) {
+      // Admin changing owner: validate the new owner is admin or manager.
+      const newOwner = await User.findById(updateBody.ownerId).lean();
+      if (!newOwner) {
+        return res.status(400).json({ message: "Selected project owner does not exist." });
+      }
+      if (!['admin', 'manager'].includes(newOwner.role)) {
+        return res.status(400).json({
+          message: "Project owner must be an admin or manager, not an employee."
+        });
+      }
+      // Sync display name
+      if (!updateBody.owner) updateBody.owner = newOwner.name;
     }
 
     project = await Project.findByIdAndUpdate(req.params.id, updateBody, { new: true });

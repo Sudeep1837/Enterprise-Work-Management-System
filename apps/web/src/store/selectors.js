@@ -157,30 +157,95 @@ export const selectMyTasks = createSelector([selectWork, selectAuth], (work, aut
   );
 });
 
-// ─── Workspace-Scoped Collections ──────────────────────────────────────────────────────
+// ─── Tasks Due Soon (next 7 days, not Done) ───────────────────────────────────
+export const selectDueSoonTasks = createSelector([selectWork, selectAuth], (work, auth) => {
+  const now = new Date();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + 7);
+  const userId = auth.user?.id || auth.user?._id;
+
+  return work.tasks
+    .filter((t) => {
+      if (!t.dueDate || t.status === "Done") return false;
+      const due = new Date(t.dueDate);
+      if (due < now || due > cutoff) return false;
+      // For employees: only their own tasks
+      if (auth.user?.role === "employee") {
+        return t.assigneeId?.toString() === userId?.toString();
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+    .slice(0, 5);
+});
+
+// ─── Workspace-Scoped Collections ──────────────────────────────────────────────
 /**
  * Since the backend now returns role-scoped data per workspace,
  * these selectors are pass-throughs that declare workspace intent explicitly.
- * Use these wherever you want to clearly signal that only scoped data is intended.
  */
 export const selectScopedTasks = createSelector([selectWork], (work) => work.tasks);
 export const selectScopedProjects = createSelector([selectWork], (work) => work.projects);
 
-// ─── Weekly Trend ─────────────────────────────────────────────────────────────
+// ─── Project Status Distribution ──────────────────────────────────────────────
+export const selectProjectStatusData = createSelector([selectWork], (work) => {
+  const statuses = ["Planning", "Active", "On Hold", "Completed"];
+  return statuses
+    .map((s) => ({
+      name: s,
+      value: work.projects.filter((p) => p.status === s).length,
+    }))
+    .filter((s) => s.value > 0);
+});
+
+// ─── Weekly Trend (REAL — computed from actual task timestamps) ───────────────
+/**
+ * For each of the last 7 days:
+ *  - `created`: tasks with createdAt on that calendar day
+ *  - `completed`: tasks with status=Done and updatedAt on that calendar day
+ *  - `value`: completed count (used as the primary series for backwards compat)
+ *
+ * No Math.random(). Data reflects the actual workspace state.
+ */
 export const selectWeeklyTrend = createSelector([selectWork], (work) => {
   const data = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dayStr = d.toLocaleDateString("en-US", { weekday: "short" });
-    const randomFuzz = Math.floor(Math.random() * 5) + 1;
-    data.push({
-      name: dayStr,
-      value: Math.max(
-        0,
-        Math.floor(work.tasks.length / 7) + (i === 0 ? randomFuzz * 2 : randomFuzz)
-      ),
-    });
+    const start = new Date();
+    start.setDate(start.getDate() - i);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    const dayStr = start.toLocaleDateString("en-US", { weekday: "short" });
+
+    const created = work.tasks.filter((t) => {
+      if (!t.createdAt) return false;
+      const d = new Date(t.createdAt);
+      return d >= start && d <= end;
+    }).length;
+
+    const completed = work.tasks.filter((t) => {
+      if (t.status !== "Done" || !t.updatedAt) return false;
+      const d = new Date(t.updatedAt);
+      return d >= start && d <= end;
+    }).length;
+
+    data.push({ name: dayStr, created, completed, value: completed });
   }
   return data;
+});
+
+// ─── Overdue vs Completed Bar Data ────────────────────────────────────────────
+export const selectOverdueVsCompleted = createSelector([selectWork], (work) => {
+  const now = new Date();
+  return TASK_PRIORITIES.map((priority) => {
+    const priorityTasks = work.tasks.filter((t) => t.priority === priority);
+    return {
+      name: priority,
+      Completed: priorityTasks.filter((t) => t.status === "Done").length,
+      Overdue: priorityTasks.filter(
+        (t) => t.status !== "Done" && t.dueDate && new Date(t.dueDate) < now
+      ).length,
+    };
+  });
 });
