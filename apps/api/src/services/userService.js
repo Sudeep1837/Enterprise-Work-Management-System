@@ -36,22 +36,34 @@ async function validateHierarchy(role, team, managerId) {
 }
 
 /**
- * Returns all users with managerId populated (name + email + _id).
- * Sanitizes each user before returning.
+ * Returns users visible to the requesting user:
+ *   Admin  → all users
+ *   Manager → employees who report to them (managerId) OR are in same team
+ *   Others  → all users (route guards handle access)
  */
-export async function listUsers() {
-  const users = await User.find()
+export async function listUsers(requestingUser) {
+  let query = {};
+
+  if (requestingUser?.role === "manager") {
+    // Prefer direct reports first; fall back to same-team employees
+    query = {
+      $or: [
+        { managerId: requestingUser.sub },
+        { team: requestingUser.team, role: "employee" },
+      ],
+    };
+  }
+
+  const users = await User.find(query)
     .populate("managerId", "name email")
     .lean();
 
   return users.map((u) => {
-    // Remove passwordHash from lean objects
     const { passwordHash, active, ...rest } = u;
     return {
       ...rest,
       id: u._id.toString(),
       isActive: active ?? true,
-      // managerId is now populated: { _id, name, email } or null
       managerId: u.managerId
         ? {
             id: u.managerId._id.toString(),

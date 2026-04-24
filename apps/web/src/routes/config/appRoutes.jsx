@@ -43,7 +43,7 @@ export const appRoutes = [
           { path: "/notifications", element: withSuspense(<NotificationsPage />) },
           { path: "/settings", element: withSuspense(<SettingsPage />) },
           { path: "/profile", element: withSuspense(<ProfilePage />) },
-          { element: <RoleGuard roles={["Admin"]} />, children: [{ path: "/users", element: withSuspense(<UsersPage />) }] },
+          { element: <RoleGuard roles={["Admin", "Manager"]} />, children: [{ path: "/users", element: withSuspense(<UsersPage />) }] },
         ],
       },
     ],

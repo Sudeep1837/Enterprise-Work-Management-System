@@ -9,11 +9,13 @@ import { selectWorkloadMetrics } from "../../store/selectors";
 import UserForm from "./components/UserForm";
 import { formatRoleLabel, getRoleColors, formatTeamLabel, formatManagerName } from "../../lib/formatters";
 import { Users, Search, UserPlus, ShieldAlert, Activity } from "lucide-react";
+import { isAdmin } from "../../lib/permissions";
 
 export default function UsersPage() {
   const dispatch = useDispatch();
   const workload = useSelector(selectWorkloadMetrics);
   const users = useSelector((state) => state.work.users);
+  const currentUser = useSelector((state) => state.auth.user);
 
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(null);
@@ -93,13 +95,19 @@ export default function UsersPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Team Directory"
-        subtitle="Manage workspace capacity, user access roles, and reporting hierarchy"
+        title={isAdmin(currentUser) ? "Team Directory" : "Your Team"}
+        subtitle={
+          isAdmin(currentUser)
+            ? "Manage workspace capacity, user access roles, and reporting hierarchy"
+            : "Team members in your scope — read-only view"
+        }
         icon={Users}
         actions={
-          <Button onClick={() => setEditing({ isActive: true })}>
-            <UserPlus className="h-4 w-4" /> Add User
-          </Button>
+          isAdmin(currentUser) && (
+            <Button onClick={() => setEditing({ isActive: true })}>
+              <UserPlus className="h-4 w-4" /> Add User
+            </Button>
+          )
         }
       />
 
@@ -133,6 +141,13 @@ export default function UsersPage() {
       {/* ── User Table ── */}
       <PageCard>
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Manager scope notice */}
+          {!isAdmin(currentUser) && (
+            <div className="w-full flex items-center gap-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2.5 text-sm text-indigo-700 dark:text-indigo-300 mb-2">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-indigo-500" />
+              Showing team members in your scope. Contact an admin to make changes.
+            </div>
+          )}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -161,7 +176,9 @@ export default function UsersPage() {
                   <th className="px-6 py-4">Reports To</th>
                   <th className="px-6 py-4">Workload</th>
                   <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  {isAdmin(currentUser) && (
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-white/10">
@@ -263,38 +280,40 @@ export default function UsersPage() {
                         />
                       </td>
 
-                      {/* Actions */}
-                      <td className="whitespace-nowrap px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 text-sm">
-                          <Button variant="secondary" onClick={() => setEditing(user)}>
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className={
-                              user.isActive
-                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"
-                                : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                            }
-                            onClick={() => {
-                              const idToUpdate = user.id || user._id;
-                              dispatch(updateUserAsync({ id: idToUpdate, active: !user.isActive }))
-                                .unwrap()
-                                .then(() => {
-                                  setUpdatedUserId(idToUpdate);
-                                  toast.success(
-                                    `User ${!user.isActive ? "activated" : "deactivated"} successfully`
+                      {/* Actions — admin only */}
+                      {isAdmin(currentUser) && (
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2 text-sm">
+                            <Button variant="secondary" onClick={() => setEditing(user)}>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className={
+                                user.isActive
+                                  ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                                  : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                              }
+                              onClick={() => {
+                                const idToUpdate = user.id || user._id;
+                                dispatch(updateUserAsync({ id: idToUpdate, active: !user.isActive }))
+                                  .unwrap()
+                                  .then(() => {
+                                    setUpdatedUserId(idToUpdate);
+                                    toast.success(
+                                      `User ${!user.isActive ? "activated" : "deactivated"} successfully`
+                                    );
+                                  })
+                                  .catch((err) =>
+                                    toast.error(`Failed: ${err.message || err}`)
                                   );
-                                })
-                                .catch((err) =>
-                                  toast.error(`Failed: ${err.message || err}`)
-                                );
-                            }}
-                          >
-                            {user.isActive ? "Deactivate" : "Activate"}
-                          </Button>
-                        </div>
-                      </td>
+                              }}
+                            >
+                              {user.isActive ? "Deactivate" : "Activate"}
+                            </Button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -304,8 +323,8 @@ export default function UsersPage() {
         )}
       </PageCard>
 
-      {/* ── Edit / Create Panel ── */}
-      {editing && (
+      {/* ── Edit / Create Panel — admin only ── */}
+      {editing && isAdmin(currentUser) && (
         <PageCard title={editing.id ? "Edit User" : "Add New User"}>
           <UserForm
             initialValues={editing}

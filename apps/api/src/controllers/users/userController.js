@@ -8,7 +8,7 @@ import User from "../../models/User.js";
  */
 export async function getUsers(req, res, next) {
   try {
-    const users = await userService.listUsers();
+    const users = await userService.listUsers(req.user);
     res.json({ users });
   } catch (error) {
     next(error);
