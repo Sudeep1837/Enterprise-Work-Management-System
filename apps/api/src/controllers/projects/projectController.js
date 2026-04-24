@@ -65,7 +65,16 @@ export const createProject = async (req, res, next) => {
       return res.status(403).json({ message: "Employees cannot create projects." });
     }
 
-    const project = new Project({ ...req.body, createdBy: req.user.sub });
+    // Bug 3 fix: if manager creates a project, force ownership to themselves.
+    // Admin may freely set any ownerId.
+    let projectData = { ...req.body, createdBy: req.user.sub };
+    if (isManager(req.user)) {
+      projectData.ownerId = req.user.sub;
+      // Default owner display name to current manager if not set
+      if (!projectData.owner) projectData.owner = req.user.name;
+    }
+
+    const project = new Project(projectData);
     const savedProject = await project.save();
     const serialized = savedProject.toJSON();
 
@@ -124,7 +133,14 @@ export const updateProject = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have permission to manage this project." });
     }
 
-    project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // Bug 3 fix: non-admins cannot transfer project ownership via update.
+    // Strip ownerId from the update body to prevent ownership hijacking.
+    const updateBody = { ...req.body };
+    if (!isAdmin(req.user)) {
+      delete updateBody.ownerId;
+    }
+
+    project = await Project.findByIdAndUpdate(req.params.id, updateBody, { new: true });
 
     await logActivity({
       actorId: req.user.sub,

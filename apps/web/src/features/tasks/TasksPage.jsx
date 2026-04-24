@@ -12,7 +12,7 @@ import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
 import { CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
-import { canDeleteTask, canUpdateTask, isEmployee } from "../../lib/permissions";
+import { canDeleteTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
@@ -107,7 +107,13 @@ export default function TasksPage() {
     <div className="space-y-6">
       <PageHeader
         title="Task Execution"
-        subtitle="Manage constraints and deliverable tasks"
+        subtitle={
+          isAdmin(currentUser)
+            ? "Global task management — all workspace tasks"
+            : isManager(currentUser)
+            ? "Your project tasks — managed scope"
+            : "My assigned tasks — execution workspace"
+        }
         icon={CheckSquare}
         actions={
           // Employees are execution-only — they cannot create new tasks

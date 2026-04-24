@@ -172,11 +172,20 @@ export const canAssignTaskToUser = (currentUser, targetUser, project) => {
   if (isAdmin(currentUser)) return true;
 
   if (isManager(currentUser)) {
-    // Self-assign
+    // Bug 5 fix: managers must not assign upward to admins
+    if (isAdmin(targetUser)) return false;
+    // Managers must not assign to unrelated managers outside their scope
+    if (isManager(targetUser)) {
+      const targetId = targetUser.id || targetUser._id?.toString();
+      // Only allow self-assign for manager (e.g. taking on a task themselves)
+      return targetId === currentUser.sub;
+    }
+
+    // Self-assign (manager takes a task)
     const targetId = targetUser.id || targetUser._id?.toString();
     if (targetId === currentUser.sub) return true;
 
-    // Explicit manager scope check
+    // Explicit manager scope check (same team or project member)
     return managerCanScopeUser(currentUser, targetUser, project);
   }
 
@@ -188,6 +197,7 @@ export const canAssignTaskToUser = (currentUser, targetUser, project) => {
 
   return false;
 };
+
 
 // ─── User Management Permissions ─────────────────────────────────────────────
 /**

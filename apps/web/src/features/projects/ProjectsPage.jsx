@@ -9,7 +9,7 @@ import { deleteProjectAsync, createProject, updateProject } from "../../store/wo
 import { selectProjectHealth } from "../../store/selectors";
 import ProjectForm from "./components/ProjectForm";
 import { FolderKanban, Plus, Search, Lock } from "lucide-react";
-import { canDeleteProject, canCreateProject, canManageProject } from "../../lib/permissions";
+import { canDeleteProject, canCreateProject, canManageProject, isAdmin, isManager, isEmployee } from "../../lib/permissions";
 
 export default function ProjectsPage() {
   const dispatch = useDispatch();
@@ -53,11 +53,19 @@ export default function ProjectsPage() {
   const completedCount = projectHealth.filter((p) => p.status === "Completed").length;
   const activeCount = projectHealth.filter((p) => p.status === "Active").length;
 
+  const projectSubtitle = isAdmin(currentUser)
+    ? "Global project registry — all workspace projects"
+    : isManager(currentUser)
+    ? "Your managed projects — ownership scope"
+    : "Projects you are a member of";
+
+  const projectCountLabel = isAdmin(currentUser) ? "Total Projects" : "Your Projects";
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projects"
-        subtitle="Workspace organizational containers"
+        subtitle={projectSubtitle}
         icon={FolderKanban}
         actions={
           canCreateProject(currentUser) && (
@@ -69,7 +77,7 @@ export default function ProjectsPage() {
       />
 
       <MetricsStrip>
-        <StripMetric label="Total Projects" value={projectHealth.length} />
+        <StripMetric label={projectCountLabel} value={projectHealth.length} />
         <StripMetric label="Active Delivery" value={activeCount} sub="In Progress" />
         <StripMetric label="Completed" value={completedCount} />
         <StripMetric
