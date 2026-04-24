@@ -82,5 +82,10 @@ export async function getCurrentUser(id) {
   // Populate managerId for /me endpoint too
   const user = await User.findById(id).populate("managerId", "name email");
   if (!user) return null;
+  // EC4: deactivated users cannot refresh their session even with a valid JWT.
+  // Returning null causes the /me controller to respond 401/404 →
+  // fetchMeThunk.rejected clears the token and redirects to login.
+  if (!user.active) return null;
   return sanitizeUser(user);
 }
+

@@ -7,7 +7,8 @@ import {
   fetchUsers, fetchProjects, fetchTasks, fetchNotifications, fetchActivity,
   socketProjectUpserted, socketProjectDeleted,
   socketTaskUpserted, socketTaskDeleted,
-  socketCommentAdded, socketNotificationCreated, socketActivityCreated
+  socketCommentAdded, socketNotificationCreated, socketActivityCreated,
+  socketUserUpdated,
 } from "../store/workSlice";
 import { fetchMeThunk } from "../store/authSlice";
 import { connectSocket, disconnectSocket } from "../services/socketClient";
@@ -46,7 +47,9 @@ function App() {
     socket.on("task:updated", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("task:moved", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("comment:added", (comment) => dispatch(socketCommentAdded(comment)));
-    
+    // EC12: task:deleted was emitted by backend but never listened to — now handled
+    socket.on("task:deleted", (id) => dispatch(socketTaskDeleted(id)));
+
     socket.on("notification:created", (payload) => {
       dispatch(socketNotificationCreated(payload));
       // Show a rich toast using structured fields when available
@@ -59,6 +62,9 @@ function App() {
     socket.on("activity:created", (payload) => {
       dispatch(socketActivityCreated(payload));
     });
+
+    // EC12: user:updated — sync role/team/active state across all sessions
+    socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
     return () => disconnectSocket();
   }, [dispatch, token]);

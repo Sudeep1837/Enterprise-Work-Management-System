@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import apiClient from "../services/apiClient";
+import { updateUserAsync } from "./workSlice";
 
 const storedToken = localStorage.getItem("ewms:token");
 const storedUser = JSON.parse(localStorage.getItem("ewms:user") || "null");
@@ -148,6 +149,17 @@ const authSlice = createSlice({
       .addCase(updateProfileThunk.fulfilled, (state, action) => {
         state.user = { ...state.user, ...action.payload.user };
         localStorage.setItem("ewms:user", JSON.stringify(state.user));
+      })
+
+      // EC2: if admin edits the currently-logged-in user, keep auth.user in sync
+      // so permission helpers (isAdmin, isManager, etc.) reflect the new role/team instantly
+      .addCase(updateUserAsync.fulfilled, (state, action) => {
+        const updatedId = action.payload?.id || action.payload?._id?.toString();
+        const currentId = state.user?.id   || state.user?._id?.toString();
+        if (updatedId && currentId && updatedId === currentId) {
+          state.user = { ...state.user, ...action.payload };
+          localStorage.setItem("ewms:user", JSON.stringify(state.user));
+        }
       });
   },
 });

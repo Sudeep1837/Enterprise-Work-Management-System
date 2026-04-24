@@ -34,12 +34,14 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
   );
 
   // Filter assignee options by current user's permission scope
+  // EC4: also exclude inactive/deactivated users from assignment options
   const assigneeOptions = [
     { value: "", label: "Unassigned" },
     ...users
-      .filter((u) => canAssignTaskToUser(currentUser, u, selectedProject))
+      .filter((u) => u.isActive !== false && canAssignTaskToUser(currentUser, u, selectedProject))
       .map((u) => ({ value: u.id || u._id?.toString(), label: u.name })),
   ];
+
 
   // Filter projects by the current user's management scope:
   // Admin: all projects. Manager: only projects they own. Employee: all (backend guards).

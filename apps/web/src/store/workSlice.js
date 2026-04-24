@@ -188,6 +188,16 @@ const workSlice = createSlice({
         }
       }
     },
+    // EC12: cross-session user sync — emitted by userController after admin update
+    socketUserUpdated: (state, action) => {
+      const uid = action.payload.id || action.payload._id?.toString();
+      const index = state.users.findIndex((u) => (u.id || u._id?.toString()) === uid);
+      if (index !== -1) {
+        state.users[index] = action.payload;
+      } else {
+        state.users.unshift(action.payload);
+      }
+    },
     clearNotificationsSync: (state) => {
       state.notifications = [];
     }
@@ -300,6 +310,7 @@ export const {
   socketCommentAdded,
   socketNotificationCreated,
   socketActivityCreated,
+  socketUserUpdated,
   clearNotificationsSync,
 } = workSlice.actions;
 

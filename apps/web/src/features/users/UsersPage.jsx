@@ -161,8 +161,18 @@ export default function UsersPage() {
 
         {!filtered.length ? (
           <EmptyState
-            title="No users found"
-            description="Adjust your search query or invite a new user."
+            title={
+              isAdmin(currentUser)
+                ? query ? "No users match your search" : "No users yet"
+                : "No team members in your scope yet"
+            }
+            description={
+              isAdmin(currentUser)
+                ? query
+                  ? "Try a different search term, or add a new user to the workspace."
+                  : "Add users to start managing workspace capacity and hierarchy."
+                : "Team members will appear here as they are assigned to your team or report to you."
+            }
             icon={Users}
           />
         ) : (

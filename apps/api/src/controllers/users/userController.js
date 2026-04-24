@@ -1,5 +1,6 @@
 import * as userService from "../../services/userService.js";
 import User from "../../models/User.js";
+import { emitToAll } from "../../sockets/socketServer.js";
 
 /**
  * GET /users
@@ -70,6 +71,8 @@ export async function updateUser(req, res, next) {
   try {
     const user = await userService.updateUser(req.params.userId, req.body);
     if (!user) return res.status(404).json({ message: "User not found" });
+    // EC12: emit user:updated for cross-session workspace state sync
+    emitToAll("user:updated", user);
     return res.json({ user });
   } catch (error) {
     if (
