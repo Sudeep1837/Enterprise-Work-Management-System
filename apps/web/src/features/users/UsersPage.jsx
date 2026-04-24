@@ -31,7 +31,8 @@ export default function UsersPage() {
     dispatch(fetchUsers());
   }, [dispatch]);
 
-  // Scroll to and briefly highlight a recently updated row
+  // Scroll to and briefly highlight the recently updated/created row.
+  // 250ms delay gives React time to re-render the list after the edit panel closes.
   useEffect(() => {
     if (!updatedUserId) return;
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
@@ -39,13 +40,16 @@ export default function UsersPage() {
     const scrollTimer = setTimeout(() => {
       const el = userRefs.current[updatedUserId];
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+    }, 250);
 
     highlightTimer.current = setTimeout(() => {
       setUpdatedUserId(null);
-    }, 3000);
+    }, 2500);
 
-    return () => clearTimeout(scrollTimer);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(highlightTimer.current);
+    };
   }, [updatedUserId]);
 
   // Join workload metrics onto base users
@@ -171,9 +175,9 @@ export default function UsersPage() {
                     <tr
                       key={uid}
                       ref={(el) => setRef(uid, el)}
-                      className={`transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${
+                      className={`transition-all duration-300 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${
                         isHighlighted
-                          ? "bg-indigo-50/80 dark:bg-indigo-900/20 shadow-sm"
+                          ? "bg-indigo-50/80 dark:bg-indigo-900/20 ring-2 ring-inset ring-indigo-400/60 dark:ring-indigo-500/40 shadow-sm"
                           : ""
                       }`}
                     >
