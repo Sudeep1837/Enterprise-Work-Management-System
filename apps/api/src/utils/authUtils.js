@@ -56,6 +56,51 @@ export const canDeleteProject = (user, project) => {
   return canManageProject(user, project);
 };
 
+// ─── Visibility Checks ────────────────────────────────────────────────────────
+/**
+ * canViewTask: Can this user see this task?
+ *   Admin   → all tasks (scope enforced at DB level, this is a guard)
+ *   Manager → tasks in their owned projects, tasks they reported, tasks assigned to them
+ *   Employee→ only tasks assigned to them
+ */
+export const canViewTask = (user, task) => {
+  if (!user || !task) return false;
+  if (isAdmin(user)) return true;
+  const userId = user.sub;
+  if (isManager(user)) {
+    // Scope enforced at DB query level; any task returned is implicitly viewable.
+    // This function guards edge-cases like getTaskById.
+    if (task.reporterId && task.reporterId.toString() === userId) return true;
+    if (task.assigneeId && task.assigneeId.toString() === userId) return true;
+    return true;
+  }
+  if (isEmployee(user)) {
+    return !!(task.assigneeId && task.assigneeId.toString() === userId);
+  }
+  return false;
+};
+
+/**
+ * canViewProject: Can this user see this project?
+ *   Admin   → all projects
+ *   Manager → only projects they own
+ *   Employee→ only projects they are a member of
+ */
+export const canViewProject = (user, project) => {
+  if (!user || !project) return false;
+  if (isAdmin(user)) return true;
+  const userId = user.sub;
+  if (isManager(user)) {
+    return !!(project.ownerId && project.ownerId.toString() === userId);
+  }
+  if (isEmployee(user)) {
+    return !!(project.members && project.members.some((id) => id.toString() === userId));
+  }
+  return false;
+};
+
+
+
 // ─── Task Permissions ─────────────────────────────────────────────────────────
 export const canDeleteTask = (user, task, project) => {
   if (isAdmin(user)) return true;

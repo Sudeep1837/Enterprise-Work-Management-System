@@ -3,7 +3,7 @@ import Task from "../../models/Task.js";
 import ActivityLog from "../../models/ActivityLog.js";
 import Notification from "../../models/Notification.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { isEmployee, canManageProject, canDeleteProject } from "../../utils/authUtils.js";
+import { isAdmin, isManager, isEmployee, canManageProject, canDeleteProject } from "../../utils/authUtils.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 async function createAndEmitNotification(recipientId, payload) {
@@ -30,12 +30,24 @@ async function logActivity(payload) {
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 export const getProjects = async (req, res, next) => {
   try {
-    const projects = await Project.find().sort({ createdAt: -1 });
+    let query = {};
+
+    if (isManager(req.user)) {
+      // Manager sees only projects they own
+      query = { ownerId: req.user.sub };
+    } else if (isEmployee(req.user)) {
+      // Employee sees only projects they are a member of
+      query = { members: req.user.sub };
+    }
+    // Admin: query = {} → all projects
+
+    const projects = await Project.find(query).sort({ createdAt: -1 });
     res.json(projects);
   } catch (error) {
     next(error);
   }
 };
+
 
 export const getProjectById = async (req, res, next) => {
   try {

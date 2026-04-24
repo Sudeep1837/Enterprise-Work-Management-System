@@ -44,12 +44,32 @@ async function logActivity(payload) {
 
 export const getTasks = async (req, res, next) => {
   try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
+    let query = {};
+
+    if (isManager(req.user)) {
+      // Manager sees: tasks in their owned projects + tasks they reported or are assigned
+      const ownedProjects = await Project.find({ ownerId: req.user.sub }).select("_id");
+      const ownedProjectIds = ownedProjects.map((p) => p._id);
+      query = {
+        $or: [
+          { projectId: { $in: ownedProjectIds } },
+          { reporterId: req.user.sub },
+          { assigneeId: req.user.sub },
+        ],
+      };
+    } else if (isEmployee(req.user)) {
+      // Employee sees only tasks assigned to them
+      query = { assigneeId: req.user.sub };
+    }
+    // Admin: query = {} → all tasks
+
+    const tasks = await Task.find(query).sort({ createdAt: -1 });
     res.json(tasks);
   } catch (error) {
     next(error);
   }
 };
+
 
 export const getTaskById = async (req, res, next) => {
   try {
