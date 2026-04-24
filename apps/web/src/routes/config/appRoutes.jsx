@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
 import AppLayout from "../../components/layout/AppLayout";
 import PublicLayout from "../../components/public/PublicLayout";
 import ProtectedRoute from "../../routes/ProtectedRoute";

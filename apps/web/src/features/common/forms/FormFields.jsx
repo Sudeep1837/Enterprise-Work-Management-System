@@ -24,7 +24,7 @@ export const SelectInput = forwardRef(function SelectInput({ label, options, err
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900/50 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 dark:text-slate-100"
       >
         {options.map((item) => (
-          <option key={item} value={item.value || item}>
+          <option key={item.value || item.label || item} value={item.value || item}>
             {item.label || item}
           </option>
         ))}
