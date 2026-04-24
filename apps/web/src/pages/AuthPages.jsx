@@ -5,184 +5,306 @@ import * as yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { loginThunk, signupThunk, clearError } from "../store/authSlice";
+import { loginThunk, signupThunk } from "../store/authSlice";
 import { toast } from "react-toastify";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle2, Activity, BarChart3, Zap, Shield } from "lucide-react";
 
+// ─── Validation schemas ───────────────────────────────────────────────────────
 const loginSchema = yup.object({
-  email: yup.string().email("Enter a valid email").required("Email is required"),
-  password: yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
+  email:    yup.string().email("Enter a valid email").required("Email is required"),
+  password: yup.string().min(8, "Minimum 8 characters").required("Password is required"),
 });
 
 const signupSchema = yup.object({
-  name: yup.string().required("Full name is required"),
-  email: yup.string().email("Enter a valid email").required("Email is required"),
-  password: yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
+  name:            yup.string().min(2, "Name must be at least 2 characters").required("Full name is required"),
+  email:           yup.string().email("Enter a valid email").required("Email is required"),
+  password:        yup.string().min(8, "Minimum 8 characters").required("Password is required"),
+  confirmPassword: yup.string()
+    .oneOf([yup.ref("password")], "Passwords do not match")
+    .required("Please confirm your password"),
 });
 
-export function LoginPage() {
-  return <AuthForm mode="login" />;
+// ─── Shared style tokens ──────────────────────────────────────────────────────
+const inputClass =
+  "w-full rounded-xl border border-white/10 bg-slate-800/70 px-4 py-3 text-slate-100 caret-indigo-400 placeholder:text-slate-500 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-50";
+const inputErrorClass =
+  "w-full rounded-xl border border-red-500/50 bg-slate-800/70 px-4 py-3 text-slate-100 caret-indigo-400 placeholder:text-slate-500 shadow-sm transition-all focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-50";
+const labelClass = "mb-1.5 block text-sm font-medium text-slate-300";
+const errorClass = "mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-400";
+
+// ─── Left branding panel ──────────────────────────────────────────────────────
+function BrandPanel() {
+  const feats = [
+    { icon: CheckCircle2, text: "Projects, tasks, and Kanban in one platform" },
+    { icon: Activity,     text: "Realtime collaboration with Socket.IO sync" },
+    { icon: BarChart3,    text: "Auto-generated velocity and analytics reports" },
+    { icon: Shield,       text: "Role-based access: Admin, Manager, Employee" },
+  ];
+
+  return (
+    <motion.aside
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-col justify-between rounded-2xl border border-white/8 bg-slate-900/60 p-8 text-white backdrop-blur-xl"
+    >
+      {/* Brand */}
+      <div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 tracking-wide uppercase">
+          <Zap className="h-3 w-3" /> Enterprise Grade
+        </span>
+        <h2 className="mt-4 text-2xl font-bold leading-snug text-white">
+          Plan smarter.<br />Execute faster.<br />Report confidently.
+        </h2>
+        <p className="mt-3 text-sm text-slate-400 leading-relaxed">
+          The collaborative workspace built for high-performing teams — role-aware, realtime, and analytics-first.
+        </p>
+
+        {/* Feature list */}
+        <ul className="mt-6 space-y-3">
+          {feats.map(({ icon: Icon, text }) => (
+            <li key={text} className="flex items-start gap-3 text-sm text-slate-300">
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+              {text}
+            </li>
+          ))}
+        </ul>
+
+        {/* Mini dashboard preview widget */}
+        <div className="mt-8 rounded-xl border border-white/8 bg-slate-800/50 p-4 space-y-3">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live Workspace</p>
+          {[
+            { label: "Platform Rebuild", pct: 82, color: "bg-indigo-500" },
+            { label: "Mobile App v2",   pct: 54, color: "bg-emerald-500" },
+            { label: "API Gateway",     pct: 91, color: "bg-cyan-500" },
+          ].map(({ label, pct, color }) => (
+            <div key={label}>
+              <div className="flex justify-between text-xs text-slate-300 mb-1">
+                <span>{label}</span><span>{pct}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-slate-700">
+                <motion.div
+                  className={`h-full rounded-full ${color}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ delay: 0.6, duration: 1, ease: "easeOut" }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Demo credentials */}
+      <div className="mt-8 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+        <p className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Demo Credentials</p>
+        {[
+          ["admin@demo.com", "Admin@123"],
+          ["manager@demo.com", "Manager@123"],
+          ["employee@demo.com", "Employee@123"],
+        ].map(([email, pw]) => (
+          <p key={email} className="text-xs text-slate-400 leading-6">
+            <span className="text-slate-200">{email}</span>
+            <span className="mx-1.5 text-slate-600">/</span>
+            {pw}
+          </p>
+        ))}
+      </div>
+    </motion.aside>
+  );
 }
 
-export function SignupPage() {
-  return <AuthForm mode="signup" />;
+// ─── Field wrapper ────────────────────────────────────────────────────────────
+function Field({ label, error, children }) {
+  return (
+    <div>
+      {label && <label className={labelClass}>{label}</label>}
+      {children}
+      {error && (
+        <p className={errorClass}>
+          <span className="inline-block h-3 w-3 rounded-full bg-red-500/20 text-red-400">!</span>
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
+// ─── Password input ───────────────────────────────────────────────────────────
+function PasswordInput({ label, error, show, onToggle, disabled, registration }) {
+  return (
+    <Field label={label} error={error}>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          className={`${error ? inputErrorClass : inputClass} pr-11`}
+          placeholder="••••••••"
+          disabled={disabled}
+          {...registration}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={disabled}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          aria-label={show ? "Hide password" : "Show password"}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    </Field>
+  );
+}
+
+// ─── Main auth form ───────────────────────────────────────────────────────────
 function AuthForm({ mode }) {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const token = useSelector((state) => state.auth.token);
-  const status = useSelector((state) => state.auth.status);
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const dispatch  = useDispatch();
+  const navigate  = useNavigate();
+  const token     = useSelector((s) => s.auth.token);
+  const status    = useSelector((s) => s.auth.status);
+
+  const [showPw,        setShowPw]        = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [submitError,   setSubmitError]   = useState(null);
 
   const schema = mode === "login" ? loginSchema : signupSchema;
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: yupResolver(schema) });
-  
+
   if (token) return <Navigate to="/dashboard" replace />;
 
   const isLoading = status === "loading";
+  const isLogin   = mode === "login";
 
   const submit = async (values) => {
     setSubmitError(null);
     try {
-      // Normalize email on the way out
-      const payload = { ...values, email: values.email.trim().toLowerCase() };
-      if (mode === "signup") {
-        await dispatch(signupThunk(payload)).unwrap();
-        toast.success("Account created! Welcome aboard.");
+      // Strip confirmPassword before sending to API
+      const { confirmPassword, ...payload } = values;
+      const normalized = { ...payload, email: payload.email.trim().toLowerCase() };
+
+      if (isLogin) {
+        await dispatch(loginThunk(normalized)).unwrap();
       } else {
-        await dispatch(loginThunk(payload)).unwrap();
+        await dispatch(signupThunk(normalized)).unwrap();
+        toast.success("Account created! Welcome aboard.");
       }
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      // err is the rejectWithValue payload (a string message)
-      const message = typeof err === "string" ? err : (err?.message || "Authentication failed");
-      setSubmitError(message);
+      setSubmitError(typeof err === "string" ? err : err?.message || "Authentication failed");
     }
   };
 
-  const authInputClass =
-    "w-full rounded-lg border border-slate-300 bg-white/95 px-3 py-2.5 text-slate-900 caret-indigo-600 placeholder:text-slate-400 shadow-sm transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
-  const errorTextClass = "mt-1 text-xs font-medium text-red-600";
-
   return (
-    <div className="relative grid min-h-[calc(100vh-120px)] place-items-center overflow-hidden px-6 py-10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.2),_transparent_45%),radial-gradient(circle_at_80%_20%,_rgba(6,182,212,0.18),_transparent_40%)]" />
-      <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-2">
-        <motion.aside initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-white/10 bg-slate-900/60 p-8 text-white backdrop-blur-xl">
-          <p className="text-cyan-300 text-sm font-medium tracking-wide uppercase">Enterprise Work Management</p>
-          <h2 className="mt-2 text-3xl font-semibold leading-tight">Plan smarter. Execute faster. Report confidently.</h2>
-          <p className="mt-3 text-slate-300">Designed for modern delivery teams with realtime updates, role-aware visibility, and high-performance workflows.</p>
-          <div className="mt-6 space-y-2 text-sm text-slate-200">
-            <p>• Projects, tasks, and Kanban orchestration</p>
-            <p>• Realtime team collaboration signals</p>
-            <p>• Analytics and execution clarity</p>
-          </div>
-          <div className="mt-8 rounded-xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm space-y-1">
-            <p className="font-semibold text-cyan-200">Demo Credentials</p>
-            <p className="text-slate-300">admin@demo.com / Admin@123</p>
-            <p className="text-slate-300">manager@demo.com / Manager@123</p>
-            <p className="text-slate-300">employee@demo.com / Employee@123</p>
-          </div>
-        </motion.aside>
+    <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center overflow-hidden px-6 py-12">
+      {/* Background */}
+      <div className="pointer-events-none absolute inset-0 bg-slate-950">
+        <div className="absolute left-1/4 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-[120px]" />
+        <div className="absolute right-1/4 bottom-0 h-[400px] w-[400px] translate-x-1/2 rounded-full bg-cyan-600/15 blur-[120px]" />
+      </div>
 
-        <motion.form
-          initial={{ opacity: 0, y: 12 }}
+      <div className="relative z-10 w-full max-w-5xl grid gap-6 lg:grid-cols-2">
+        <BrandPanel />
+
+        {/* Form card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-white/10 bg-white/90 p-8 shadow-2xl backdrop-blur"
-          onSubmit={handleSubmit(submit)}
-          noValidate
+          transition={{ duration: 0.45, delay: 0.1 }}
+          className="rounded-2xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl backdrop-blur-2xl"
         >
-          <h2 className="text-2xl font-semibold text-slate-900">
-            {mode === "login" ? "Welcome back" : "Create your account"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {mode === "login" ? "Sign in to continue to your workspace." : "Start with a collaborative workspace in minutes."}
-          </p>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-white">
+              {isLogin ? "Welcome back" : "Create your account"}
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-400">
+              {isLogin
+                ? "Sign in to continue to your workspace."
+                : "Start collaborating with your team in minutes."}
+            </p>
+          </div>
 
-          <div className="mt-5 space-y-4">
-            {mode === "signup" && (
-              <div>
+          <form onSubmit={handleSubmit(submit)} noValidate className="space-y-4">
+            {/* Name — signup only */}
+            {!isLogin && (
+              <Field label="Full Name" error={errors.name?.message}>
                 <input
-                  className={authInputClass}
-                  placeholder="Full name"
+                  className={errors.name ? inputErrorClass : inputClass}
+                  placeholder="Alex Johnson"
                   disabled={isLoading}
-                  aria-label="Full name"
                   {...register("name")}
                 />
-                {errors.name && <p className={errorTextClass}>{errors.name.message}</p>}
+              </Field>
+            )}
+
+            {/* Email */}
+            <Field label="Email Address" error={errors.email?.message}>
+              <input
+                type="email"
+                autoComplete="email"
+                className={errors.email ? inputErrorClass : inputClass}
+                placeholder="you@company.com"
+                disabled={isLoading}
+                {...register("email")}
+              />
+            </Field>
+
+            {/* Password */}
+            <PasswordInput
+              label="Password"
+              error={errors.password?.message}
+              show={showPw}
+              onToggle={() => setShowPw((v) => !v)}
+              disabled={isLoading}
+              registration={register("password")}
+            />
+
+            {/* Confirm Password — signup only */}
+            {!isLogin && (
+              <PasswordInput
+                label="Confirm Password"
+                error={errors.confirmPassword?.message}
+                show={showConfirmPw}
+                onToggle={() => setShowConfirmPw((v) => !v)}
+                disabled={isLoading}
+                registration={register("confirmPassword")}
+              />
+            )}
+
+            {/* Server error */}
+            {submitError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {submitError}
               </div>
             )}
 
-            <div>
-              <input
-                className={authInputClass}
-                placeholder="Email address"
-                type="email"
-                autoComplete="email"
-                disabled={isLoading}
-                aria-label="Email address"
-                {...register("email")}
-              />
-              {errors.email && <p className={errorTextClass}>{errors.email.message}</p>}
-            </div>
+            {/* Submit */}
+            <motion.button
+              whileHover={!isLoading ? { y: -1, scale: 1.01 } : {}}
+              whileTap={!isLoading  ? { scale: 0.99 } : {}}
+              className="mt-2 flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-500 hover:to-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Authenticating…</>
+              ) : isLogin ? "Sign in to workspace" : "Create account"}
+            </motion.button>
+          </form>
 
-            <div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className={authInputClass}
-                  placeholder="Password"
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  disabled={isLoading}
-                  aria-label="Password"
-                  {...register("password")}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className={errorTextClass}>{errors.password.message}</p>}
-            </div>
-          </div>
-
-          {/* Inline server error */}
-          {submitError && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {submitError}
-            </div>
-          )}
-
-          <motion.button
-            whileHover={!isLoading ? { y: -1 } : {}}
-            whileTap={!isLoading ? { scale: 0.99 } : {}}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-500 py-2.5 font-medium text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Authenticating...
-              </>
-            ) : mode === "login" ? "Sign in" : "Create account"}
-          </motion.button>
-
-          <Link
-            className="mt-4 block text-center text-sm text-indigo-700 hover:text-indigo-900"
-            to={mode === "login" ? "/signup" : "/login"}
-          >
-            {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-          </Link>
-        </motion.form>
+          <p className="mt-5 text-center text-sm text-slate-500">
+            {isLogin ? "No account yet?" : "Already have an account?"}{" "}
+            <Link
+              to={isLogin ? "/signup" : "/login"}
+              className="font-medium text-indigo-400 hover:text-indigo-300 transition"
+            >
+              {isLogin ? "Sign up free" : "Sign in"}
+            </Link>
+          </p>
+        </motion.div>
       </div>
     </div>
   );
 }
+
+export function LoginPage()  { return <AuthForm mode="login"  />; }
+export function SignupPage() { return <AuthForm mode="signup" />; }

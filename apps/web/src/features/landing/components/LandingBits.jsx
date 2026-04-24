@@ -1,6 +1,18 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, Layout, Users, Activity, BarChart3, GripHorizontal } from "lucide-react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+const DONUT_DATA = [
+  { name: "Done", value: 54, color: "#10b981" },
+  { name: "In Progress", value: 32, color: "#6366f1" },
+  { name: "Review", value: 14, color: "#f59e0b" },
+  { name: "To Do", value: 18, color: "#94a3b8" },
+];
+const BAR_DATA = [
+  { d: "Mon", v: 6 }, { d: "Tue", v: 11 }, { d: "Wed", v: 9 },
+  { d: "Thu", v: 14 }, { d: "Fri", v: 12 }, { d: "Sat", v: 8 }, { d: "Sun", v: 16 },
+];
 
 export function AnimatedBackground() {
   return (
@@ -246,6 +258,198 @@ export function RolesSection() {
             >
               <h3 className={`text-lg font-semibold leading-8 ${color}`}>{title}</h3>
               <p className="mt-4 text-sm leading-6 text-slate-300">{desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── KPI Metrics ─────────────────────────────────────────────────────────────
+export function MetricsSection() {
+  const stats = [
+    { val: "12,400+", label: "Tasks Completed", sub: "Across all workspaces", color: "text-indigo-400" },
+    { val: "98.3%",   label: "On-Time Delivery", sub: "Project success rate",  color: "text-emerald-400" },
+    { val: "340+",   label: "Teams Onboarded",  sub: "Globally distributed",  color: "text-cyan-400" },
+    { val: "99.9%",  label: "Platform Uptime",  sub: "SLA guarantee",         color: "text-amber-400" },
+  ];
+  return (
+    <section className="relative z-10 border-y border-white/5 bg-slate-900/50 py-14">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+          {stats.map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+              className="rounded-2xl border border-white/8 bg-white/5 p-6 text-center backdrop-blur-sm hover:bg-white/10 transition">
+              <p className={`text-3xl font-black ${s.color}`}>{s.val}</p>
+              <p className="mt-1 text-sm font-semibold text-white">{s.label}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{s.sub}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Analytics Preview ────────────────────────────────────────────────────────
+function PreviewCard({ title, sub, children }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur-sm">
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <p className="text-xs text-slate-400 mb-3">{sub}</p>
+      {children}
+    </div>
+  );
+}
+export function AnalyticsPreview() {
+  const total = DONUT_DATA.reduce((a, d) => a + d.value, 0);
+  const projects = [
+    { n: "Platform Rebuild", p: 82, c: "bg-indigo-500" },
+    { n: "Mobile App v2",   p: 54, c: "bg-emerald-500" },
+    { n: "Analytics Engine", p: 31, c: "bg-amber-500" },
+    { n: "API Gateway",      p: 91, c: "bg-cyan-500" },
+  ];
+  const team = [
+    { n: "Sarah K.", t: 7, c: "bg-indigo-500" },
+    { n: "Alex M.",  t: 12, c: "bg-emerald-500" },
+    { n: "Jordan L.",t: 5,  c: "bg-amber-500" },
+    { n: "Morgan P.",t: 9,  c: "bg-cyan-500" },
+  ];
+  return (
+    <section className="relative z-10 bg-slate-950 py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="text-center mb-14">
+          <p className="text-base font-semibold text-indigo-400">Live Intelligence</p>
+          <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Real-time visibility into every team</h2>
+          <p className="mt-3 text-slate-400 max-w-xl mx-auto">Purpose-built analytics for delivery teams — not generic BI tools.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <PreviewCard title="Task Status" sub="Live snapshot">
+            <div className="relative flex justify-center">
+              <PieChart width={140} height={140}>
+                <Pie data={DONUT_DATA} cx={70} cy={70} innerRadius={45} outerRadius={66} dataKey="value" paddingAngle={3}>
+                  {DONUT_DATA.map(d => <Cell key={d.name} fill={d.color} />)}
+                </Pie>
+              </PieChart>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-white">{total}</span>
+                <span className="text-xs text-slate-400">Tasks</span>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              {DONUT_DATA.map(d => (
+                <div key={d.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ background: d.color }} />{d.name}
+                </div>
+              ))}
+            </div>
+          </PreviewCard>
+          <PreviewCard title="Weekly Velocity" sub="Tasks completed/day">
+            <div className="h-[140px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={BAR_DATA} margin={{ top: 0, right: 0, left: -28, bottom: 0 }} barSize={14}>
+                  <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <Tooltip cursor={{ fill: "rgba(99,102,241,0.08)" }} contentStyle={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", fontSize: "12px", color: "#fff" }} />
+                  <Bar dataKey="v" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </PreviewCard>
+          <PreviewCard title="Project Health" sub="Completion tracking">
+            <div className="space-y-3">
+              {projects.map(p => (
+                <div key={p.n}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-300 truncate">{p.n}</span>
+                    <span className="text-slate-400 ml-2 shrink-0">{p.p}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-700">
+                    <div className={`h-full rounded-full ${p.c}`} style={{ width: `${p.p}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PreviewCard>
+          <PreviewCard title="Team Workload" sub="Active task load">
+            <div className="space-y-3">
+              {team.map(m => (
+                <div key={m.n} className="flex items-center gap-2.5">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${m.c} text-xs font-bold text-white`}>{m.n[0]}</div>
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-200">{m.n}</span>
+                      <span className="text-slate-400">{m.t}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-slate-700">
+                      <div className={`h-full rounded-full ${m.c}`} style={{ width: `${(m.t / 14) * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PreviewCard>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Workflow Steps ───────────────────────────────────────────────────────────
+export function WorkflowSection() {
+  const steps = [
+    { n: "01", title: "Structure Workspace", desc: "Create projects, assign managers, and define delivery timelines in one setup.", color: "text-indigo-400", border: "border-indigo-500/20", bg: "bg-indigo-500/5" },
+    { n: "02", title: "Assign & Execute",    desc: "Break work into tasks with priorities, due dates, and role-based ownership.",      color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
+    { n: "03", title: "Track & Deliver",     desc: "Monitor Kanban progress, get instant notifications, and review auto-generated reports.", color: "text-cyan-400",    border: "border-cyan-500/20",    bg: "bg-cyan-500/5" },
+  ];
+  return (
+    <section className="relative z-10 bg-slate-900 py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="text-center mb-14">
+          <p className="text-base font-semibold text-indigo-400">The System</p>
+          <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">From kickoff to delivery, end-to-end</h2>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {steps.map((s, i) => (
+            <motion.div key={s.n} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}
+              className={`rounded-3xl border ${s.border} ${s.bg} p-8 backdrop-blur-sm`}>
+              <div className={`text-5xl font-black opacity-30 mb-4 ${s.color}`}>{s.n}</div>
+              <h3 className={`text-lg font-semibold mb-3 ${s.color}`}>{s.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Trust / Testimonials ─────────────────────────────────────────────────────
+export function TrustSection() {
+  const quotes = [
+    { q: "Finally a system that respects role boundaries. Admins see everything, managers see what they need, and employees stay focused.", name: "Priya S.", title: "Head of Engineering", init: "PS", c: "bg-indigo-500" },
+    { q: "The Kanban board and realtime updates reduced our stand-up time by half. Everything is visible instantly.", name: "Marcus L.", title: "Product Manager", init: "ML", c: "bg-emerald-500" },
+    { q: "Reports update automatically as tasks close. I stopped chasing status updates. The analytics section alone made this worth it.", name: "Aiko T.", title: "Delivery Lead", init: "AT", c: "bg-cyan-500" },
+  ];
+  return (
+    <section className="relative z-10 bg-slate-950 py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl font-bold text-white sm:text-4xl">Loved by delivery teams</h2>
+          <p className="mt-3 text-slate-400">Teams across the org finally aligned on one platform.</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {quotes.map((t, i) => (
+            <motion.div key={t.name} initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              className="flex flex-col rounded-3xl border border-white/8 bg-slate-900/60 p-8 backdrop-blur-sm hover:bg-slate-900/80 transition">
+              <p className="text-slate-300 text-sm leading-relaxed flex-1">"{t.q}"</p>
+              <div className="mt-6 flex items-center gap-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${t.c} text-xs font-bold text-white shrink-0`}>{t.init}</div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{t.name}</p>
+                  <p className="text-xs text-slate-500">{t.title}</p>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
