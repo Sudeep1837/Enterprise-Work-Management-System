@@ -4,15 +4,30 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { PageCard, PageHeader } from "../common/components/UI";
 import { DonutChartCard, StripMetric, CustomChartTooltip } from "../common/components/Analytics";
 import { selectDashboardMetrics, selectWorkloadMetrics, selectWeeklyTrend } from "../../store/selectors";
-import { BarChart3, TrendingUp, Filter } from "lucide-react";
+import { BarChart3, TrendingUp, Filter, ShieldAlert } from "lucide-react";
+import { useSelector } from "react-redux";
+import { isAdmin, isManager } from "../../lib/permissions";
 
 export default function ReportsPage() {
   const metrics = useSelector(selectDashboardMetrics);
   const workload = useSelector(selectWorkloadMetrics);
   const trendData = useSelector(selectWeeklyTrend);
   const tasks = useSelector(state => state.work.tasks);
-  
+  const currentUser = useSelector((state) => state.auth.user);
+
   const [filterMode, setFilterMode] = useState("all");
+
+  // Role-aware page labels — data is already scoped by backend
+  const pageTitle = isAdmin(currentUser)
+    ? "Cross-Functional Analytics"
+    : isManager(currentUser)
+    ? "Team Analytics"
+    : "My Performance";
+  const pageSubtitle = isAdmin(currentUser)
+    ? "Organisation-wide velocity, workload, and delivery metrics"
+    : isManager(currentUser)
+    ? "Delivery metrics for your team and managed projects"
+    : "Your task completion, deadlines, and personal velocity";
 
   const trendMaxValue = Math.max(...trendData.map(d => d.value)) + 2;
 
@@ -26,9 +41,9 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader 
-        title="Cross-Functional Analytics" 
-        subtitle="Deep metrics into workspace velocity and user workload"
+      <PageHeader
+        title={pageTitle}
+        subtitle={pageSubtitle}
         icon={BarChart3}
         actions={
           <div className="flex items-center gap-2 text-sm text-slate-500 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 bg-white dark:bg-slate-900/50 shadow-sm backdrop-blur">

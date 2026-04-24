@@ -29,14 +29,15 @@ import {
 
 const links = [
   { name: "dashboard", icon: LayoutDashboard },
-  { name: "projects", icon: FolderKanban },
-  { name: "tasks", icon: CheckSquare },
-  { name: "kanban", icon: Kanban },
-  { name: "users", icon: Users },
-  { name: "reports", icon: BarChart3 },
+  { name: "projects",  icon: FolderKanban },
+  { name: "tasks",     icon: CheckSquare },
+  { name: "kanban",    icon: Kanban },
+  // /users is restricted to admin + manager; employees are excluded from the nav
+  { name: "users",     icon: Users,    roles: ["admin", "manager"] },
+  { name: "reports",   icon: BarChart3 },
   { name: "notifications", icon: Bell },
-  { name: "settings", icon: Settings },
-  { name: "profile", icon: UserCircle },
+  { name: "settings",  icon: Settings },
+  { name: "profile",   icon: UserCircle },
 ];
 
 function relativeTime(dateStr) {
@@ -66,6 +67,19 @@ function SidebarContent({ onNavClick }) {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
 
+  // Filter nav links by role — employees do not see /users
+  const visibleLinks = links.filter(
+    (item) => !item.roles || item.roles.includes(user?.role?.toLowerCase())
+  );
+
+  // Role-aware workspace section label
+  const workspaceLabel =
+    user?.role === "admin"
+      ? "Global Workspace"
+      : user?.role === "manager"
+      ? "Team Workspace"
+      : "My Workspace";
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center gap-3 px-6 pb-2 pt-6">
@@ -78,9 +92,9 @@ function SidebarContent({ onNavClick }) {
       <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-4 py-8">
         <div className="space-y-1">
           <p className="mb-4 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Workspace
+            {workspaceLabel}
           </p>
-          {links.map((item) => (
+          {visibleLinks.map((item) => (
             <NavLink
               key={item.name}
               to={`/${item.name}`}
