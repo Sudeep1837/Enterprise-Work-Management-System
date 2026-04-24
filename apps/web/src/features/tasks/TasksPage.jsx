@@ -10,8 +10,9 @@ import { deleteTaskAsync, createTask, updateTaskAsync } from "../../store/workSl
 import { selectDashboardMetrics } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
+import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
 import { CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
-import { canDeleteTask, canUpdateTask } from "../../lib/permissions";
+import { canDeleteTask, canUpdateTask, isEmployee } from "../../lib/permissions";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
@@ -109,9 +110,12 @@ export default function TasksPage() {
         subtitle="Manage constraints and deliverable tasks"
         icon={CheckSquare}
         actions={
-          <Button onClick={() => setEditing({ status: "Todo", type: "Feature", priority: "Medium" })}>
-            <Plus className="h-4 w-4" /> New Task
-          </Button>
+          // Employees are execution-only — they cannot create new tasks
+          !isEmployee(currentUser) && (
+            <Button onClick={() => setEditing({ status: "Todo", type: "Feature", priority: "Medium" })}>
+              <Plus className="h-4 w-4" /> New Task
+            </Button>
+          )
         }
       />
 
@@ -135,7 +139,7 @@ export default function TasksPage() {
         </div>
       </MetricsStrip>
 
-      {/* Task Create / Edit Form */}
+      {/* Task Create / Edit Form — full form for admin/manager, limited for employee */}
       <AnimatePresence>
         {editing && (
           <motion.div
@@ -145,9 +149,21 @@ export default function TasksPage() {
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
-            <PageCard title={editing.id ? "Edit Task" : "Create Task"}>
-              <TaskForm initialValues={editing} onSubmit={saveTask} onCancel={() => setEditing(null)} />
-            </PageCard>
+            {isEmployee(currentUser) ? (
+              // Employees get the execution-only panel
+              <PageCard title="Update Task">
+                <EmployeeTaskUpdate
+                  task={editing}
+                  onCancel={() => setEditing(null)}
+                  onSuccess={() => setEditing(null)}
+                />
+              </PageCard>
+            ) : (
+              // Admin / Manager get the full editor
+              <PageCard title={editing.id ? "Edit Task" : "Create Task"}>
+                <TaskForm initialValues={editing} onSubmit={saveTask} onCancel={() => setEditing(null)} />
+              </PageCard>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
