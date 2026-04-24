@@ -71,7 +71,45 @@ export const canUseProjectForTask = (user, project) => {
   return true;
 };
 
-// ─── Task Permissions ─────────────────────────────────────────────────────────
+// ─── Visibility Checks ────────────────────────────────────────────────────────
+/**
+ * canViewTask: Can this user see this task in the UI?
+ * Backend already returns workspace-scoped tasks; this is a client-side
+ * safety net and makes permission intent explicit across the codebase.
+ *   Admin   → all tasks
+ *   Manager → any task returned by the backend (already scoped)
+ *   Employee→ only tasks assigned to them
+ */
+export const canViewTask = (user, task) => {
+  if (!user || !task) return false;
+  if (isAdmin(user)) return true;
+  if (isManager(user)) return true; // scope enforced at backend
+  if (isEmployee(user)) {
+    const userId  = user.id || user._id?.toString();
+    const assignee = task.assigneeId?._id || task.assigneeId;
+    return !!(assignee && assignee.toString() === userId);
+  }
+  return false;
+};
+
+/**
+ * canViewProject: Can this user see this project in the UI?
+ *   Admin   → all projects
+ *   Manager → only projects they own (backend-scoped)
+ *   Employee→ only projects they're a member of (backend-scoped)
+ */
+export const canViewProject = (user, project) => {
+  if (!user || !project) return false;
+  if (isAdmin(user)) return true;
+  if (isManager(user)) return canManageProject(user, project);
+  if (isEmployee(user)) {
+    const userId  = user.id || user._id?.toString();
+    const members = project.members || [];
+    return members.some((id) => (id._id || id).toString() === userId);
+  }
+  return false;
+};
+
 export const canDeleteTask = (user, task, project) => {
   if (!user || !task) return false;
   if (isAdmin(user)) return true;

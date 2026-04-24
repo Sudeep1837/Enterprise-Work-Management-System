@@ -148,7 +148,7 @@ export const selectWorkloadMetrics = createSelector([selectWork], (work) => {
     .sort((a, b) => b.workloadScore - a.workloadScore);
 });
 
-// ─── My Tasks (for Employee role-based view) ──────────────────────────────────
+// ─── My Tasks (for Employee role-based view) ────────────────────────────────────
 export const selectMyTasks = createSelector([selectWork, selectAuth], (work, auth) => {
   if (!auth.user) return [];
   const userId = auth.user.id || auth.user._id;
@@ -156,6 +156,15 @@ export const selectMyTasks = createSelector([selectWork, selectAuth], (work, aut
     (t) => t.assigneeId?.toString() === userId?.toString() && t.status !== "Done"
   );
 });
+
+// ─── Workspace-Scoped Collections ──────────────────────────────────────────────────────
+/**
+ * Since the backend now returns role-scoped data per workspace,
+ * these selectors are pass-throughs that declare workspace intent explicitly.
+ * Use these wherever you want to clearly signal that only scoped data is intended.
+ */
+export const selectScopedTasks = createSelector([selectWork], (work) => work.tasks);
+export const selectScopedProjects = createSelector([selectWork], (work) => work.projects);
 
 // ─── Weekly Trend ─────────────────────────────────────────────────────────────
 export const selectWeeklyTrend = createSelector([selectWork], (work) => {

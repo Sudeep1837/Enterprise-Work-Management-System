@@ -9,7 +9,7 @@ import { selectKanbanMetrics } from "../../store/selectors";
 import { Kanban, GripHorizontal, LayoutTemplate, Lock, Clock, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
-import { canMoveTask } from "../../lib/permissions";
+import { canMoveTask, isAdmin, isManager, isEmployee } from "../../lib/permissions";
 
 export default function KanbanPage() {
   const tasks = useSelector((state) => state.work.tasks);
@@ -27,13 +27,27 @@ export default function KanbanPage() {
     [tasks]
   );
 
+  const kanbanSubtitle = isAdmin(currentUser)
+    ? "Global task board — all workspace tasks"
+    : isManager(currentUser)
+    ? "Your project tasks — managed scope"
+    : "My assigned tasks — execution workspace";
+
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col space-y-6">
       <PageHeader
         title="Kanban Board"
-        subtitle="Visualize workflow and track execution status"
+        subtitle={kanbanSubtitle}
         icon={Kanban}
       />
+
+      {/* Employee scope notice */}
+      {isEmployee(currentUser) && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-900/20 px-4 py-2.5 text-sm text-indigo-700 dark:text-indigo-300">
+          <Lock className="h-4 w-4 shrink-0 text-indigo-500" />
+          Showing only tasks assigned to you. Status updates can be done by dragging or via the Tasks page.
+        </div>
+      )}
 
       <MetricsStrip>
         <StripMetric label="Total Tasks" value={kMetrics.totalActive + kMetrics.done} />
