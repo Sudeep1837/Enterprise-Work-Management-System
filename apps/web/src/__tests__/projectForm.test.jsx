@@ -7,10 +7,10 @@ import { renderWithProviders } from "../test-utils/renderWithProviders";
 describe("ProjectForm", () => {
   test("locks managers to themselves as project owners on submit", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn();
+    const onSubmit = jest.fn();
     const currentManager = { id: "mgr-1", name: "Mina Manager", role: "manager", team: "Product" };
 
-    renderWithProviders(<ProjectForm initialValues={{}} onSubmit={onSubmit} onCancel={vi.fn()} />, {
+    renderWithProviders(<ProjectForm initialValues={{}} onSubmit={onSubmit} onCancel={jest.fn()} />, {
       preloadedState: {
         auth: { user: currentManager, token: "token", initialized: true, status: "succeeded", error: null },
         work: {
@@ -47,7 +47,7 @@ describe("ProjectForm", () => {
   test("shows only admin and manager owner options for admins", () => {
     const currentAdmin = { id: "admin-1", name: "Asha Admin", role: "admin" };
 
-    renderWithProviders(<ProjectForm initialValues={{}} onSubmit={vi.fn()} onCancel={vi.fn()} />, {
+    renderWithProviders(<ProjectForm initialValues={{}} onSubmit={jest.fn()} onCancel={jest.fn()} />, {
       preloadedState: {
         auth: { user: currentAdmin, token: "token", initialized: true, status: "succeeded", error: null },
         work: {

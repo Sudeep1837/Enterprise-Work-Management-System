@@ -7,9 +7,4 @@ export default defineConfig({
     jsxInject: 'import React from "react"',
   },
   server: { port: 5173 },
-  test: {
-    environment: "jsdom",
-    setupFiles: "./src/test-utils/setupTests.js",
-    globals: true,
-  },
 });

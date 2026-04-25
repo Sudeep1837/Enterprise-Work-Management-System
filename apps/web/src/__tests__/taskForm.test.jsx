@@ -21,9 +21,9 @@ const baseUsers = [
 describe("TaskForm", () => {
   test("validates the required business fields before saving a task", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn();
+    const onSubmit = jest.fn();
 
-    renderWithProviders(<TaskForm initialValues={{}} onSubmit={onSubmit} onCancel={vi.fn()} />, {
+    renderWithProviders(<TaskForm initialValues={{}} onSubmit={onSubmit} onCancel={jest.fn()} />, {
       preloadedState: {
         auth: { user: manager, token: "token", initialized: true, status: "succeeded", error: null },
         work: { theme: "light", ui: {}, projects: baseProjects, tasks: [], users: baseUsers, notifications: [], activity: [], status: "idle", error: null },
@@ -40,7 +40,7 @@ describe("TaskForm", () => {
   test("limits manager project and assignee options to their allowed scope", async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<TaskForm initialValues={{ status: "Todo", priority: "Medium", type: "Feature" }} onSubmit={vi.fn()} onCancel={vi.fn()} />, {
+    renderWithProviders(<TaskForm initialValues={{ status: "Todo", priority: "Medium", type: "Feature" }} onSubmit={jest.fn()} onCancel={jest.fn()} />, {
       preloadedState: {
         auth: { user: manager, token: "token", initialized: true, status: "succeeded", error: null },
         work: { theme: "light", ui: {}, projects: baseProjects, tasks: [], users: baseUsers, notifications: [], activity: [], status: "idle", error: null },

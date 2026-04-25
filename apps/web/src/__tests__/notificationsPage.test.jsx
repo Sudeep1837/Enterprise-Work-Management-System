@@ -5,13 +5,14 @@ import NotificationsPage from "../features/notifications/NotificationsPage";
 import { renderWithProviders } from "../test-utils/renderWithProviders";
 import apiClient from "../services/apiClient";
 
-vi.mock("../services/apiClient", () => ({
+jest.mock("../services/apiClient", () => ({
+  __esModule: true,
   default: {
-    get: vi.fn(),
-    patch: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
+    get: jest.fn(),
+    patch: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
   },
 }));
 

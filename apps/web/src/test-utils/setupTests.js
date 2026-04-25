@@ -1,16 +1,15 @@
-import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, vi } from "vitest";
+import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import { TextEncoder, TextDecoder } from "util";
 
-vi.mock("react-toastify", async () => {
-  const actual = await vi.importActual("react-toastify");
+jest.mock("react-toastify", () => {
+  const actual = jest.requireActual("react-toastify");
   return {
     ...actual,
     toast: {
-      success: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
+      success: jest.fn(),
+      error: jest.fn(),
+      info: jest.fn(),
     },
     ToastContainer: () => null,
   };
@@ -25,27 +24,27 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  jest.clearAllMocks();
 });
 
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
-    value: vi.fn().mockImplementation((query) => ({
+    value: jest.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
       onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
     })),
   });
 }
 
 if (!window.HTMLElement.prototype.scrollIntoView) {
-  window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
 }
 
 if (!window.ResizeObserver) {
