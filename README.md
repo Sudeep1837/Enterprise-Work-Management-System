@@ -7,7 +7,7 @@ JavaScript-only enterprise work management monorepo built with **pure ES Modules
 This project is a polished, modular, enterprise-style demo app that showcases:
 
 - role-based JWT authentication
-- localStorage-driven business data architecture
+- MongoDB-backed business data with localStorage reserved for UI preferences
 - realtime UI synchronization over Socket.IO
 - modular feature-based React architecture
 - premium animated UX with Framer Motion
@@ -101,6 +101,8 @@ root/
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+- `PATCH /api/auth/profile`
+- `PATCH /api/auth/change-password`
 - `GET /api/users`
 - `POST /api/users` (Admin)
 - `PATCH /api/users/:userId` (Admin)
@@ -199,3 +201,7 @@ Includes unit tests and integration-style UI coverage in JavaScript.
 ## Mock Attachment Note
 
 Attachments are demo-oriented and stored as local metadata in frontend persistence. Backend upload endpoint returns temporary metadata only and does not provide centralized file storage.
+
+## User Lifecycle Policy
+
+User management uses enterprise-safe activation controls instead of destructive hard delete. Admins can activate or deactivate users; deactivated users cannot log in, do not appear in normal assignment dropdowns, and remain attached to historical tasks, comments, reports, and activity records.

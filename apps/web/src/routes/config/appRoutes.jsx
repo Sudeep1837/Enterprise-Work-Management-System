@@ -6,6 +6,7 @@ import RoleGuard from "../../routes/RoleGuard";
 import { LoginPage, SignupPage } from "../../pages/AuthPages";
 import UnauthorizedPage from "../../features/common/UnauthorizedPage";
 import NotFoundPage from "../../features/common/NotFoundPage";
+import ErrorBoundary from "../../features/common/ErrorBoundary";
 import LandingPage from "../../features/landing/LandingPage";
 
 const DashboardPage = lazy(() => import("../../features/dashboard/DashboardPage"));
@@ -19,7 +20,11 @@ const SettingsPage = lazy(() => import("../../features/settings/SettingsPage"));
 const ProfilePage = lazy(() => import("../../features/profile/ProfilePage"));
 const ActivityPage = lazy(() => import("../../features/activity/ActivityPage"));
 
-const withSuspense = (node) => <Suspense fallback={<div className="p-4">Loading...</div>}>{node}</Suspense>;
+const withSuspense = (node) => (
+  <ErrorBoundary>
+    <Suspense fallback={<div className="p-4">Loading...</div>}>{node}</Suspense>
+  </ErrorBoundary>
+);
 
 export const appRoutes = [
   {

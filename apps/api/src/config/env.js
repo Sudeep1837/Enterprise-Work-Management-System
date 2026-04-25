@@ -11,10 +11,19 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || "super-secret-demo-key",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "8h",
   mongoUri: process.env.MONGODB_URI,
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
 };
 
 if (!env.mongoUri) {
   console.warn("WARNING: MONGODB_URI is not defined in the environment.");
+}
+
+if (!env.cloudinary.cloudName || !env.cloudinary.apiKey || !env.cloudinary.apiSecret) {
+  console.warn("WARNING: Cloudinary environment variables are not fully configured.");
 }
 
 export default env;

@@ -40,3 +40,35 @@ export async function updateProfile(req, res, next) {
     next(error);
   }
 }
+
+export async function updateProfileImage(req, res, next) {
+  try {
+    const user = await userService.updateOwnProfileImage(req.user.sub, req.file);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeProfileImage(req, res, next) {
+  try {
+    const user = await userService.removeOwnProfileImage(req.user.sub);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function changePassword(req, res, next) {
+  try {
+    const result = await authService.changePassword(req.user.sub, req.body);
+    return res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    next(error);
+  }
+}

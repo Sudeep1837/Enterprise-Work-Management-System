@@ -1,14 +1,56 @@
-import { useSelector } from "react-redux";
-import { PageCard, PageHeader } from "../common/components/UI";
-import { UserCircle, Mail, Briefcase, Calendar } from "lucide-react";
+import { useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { PageHeader, Button } from "../common/components/UI";
+import Avatar from "../common/components/Avatar";
+import { fetchUsers } from "../../store/workSlice";
+import { removeProfileImageThunk, updateProfileImageThunk } from "../../store/authSlice";
+import { UserCircle, Mail, Briefcase, Calendar, Camera, Loader2, Trash2, Upload } from "lucide-react";
 
 export default function ProfilePage() {
+  const dispatch = useDispatch();
+  const inputRef = useRef(null);
   const user = useSelector((state) => state.auth.user);
   const profile = useSelector((state) => state.work.profile || {});
+  const profileImageStatus = useSelector((state) => state.auth.profileImageStatus);
   
   const displayName = profile.name || user?.name || "Anonymous User";
   const displayEmail = profile.email || user?.email || "No email provided";
   const displayRole = user?.role || "Employee";
+  const profileImageUrl = user?.profileImageUrl || "";
+  const isUploading = profileImageStatus === "loading";
+
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    dispatch(updateProfileImageThunk(file))
+      .unwrap()
+      .then(() => {
+        toast.success("Profile picture updated");
+        dispatch(fetchUsers({ force: true }));
+      })
+      .catch((error) => toast.error(error || "Failed to upload profile picture"))
+      .finally(() => {
+        event.target.value = "";
+      });
+  };
+
+  const handleRemoveImage = () => {
+    dispatch(removeProfileImageThunk())
+      .unwrap()
+      .then(() => {
+        toast.success("Profile picture removed");
+        dispatch(fetchUsers({ force: true }));
+      })
+      .catch((error) => toast.error(error || "Failed to remove profile picture"));
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -19,18 +61,50 @@ export default function ProfilePage() {
       />
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/50 backdrop-blur-xl">
-        <div className="h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        <div className="h-32 bg-gradient-to-r from-slate-950 via-indigo-700 to-cyan-500"></div>
         
         <div className="px-6 sm:px-10 pb-10">
-          <div className="relative flex justify-between items-end mb-8 -mt-12">
-            <div className="rounded-full bg-white p-1 dark:bg-slate-900 shadow-md">
-              <img
-                className="h-24 w-24 rounded-full object-cover border-4 border-white dark:border-slate-900"
-                src={`https://ui-avatars.com/api/?name=${displayName}&background=e0e7ff&color=4338ca&size=256&bold=true`}
-                alt=""
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-8 -mt-12">
+            <div className="relative w-fit rounded-full bg-white p-1 dark:bg-slate-900 shadow-md">
+              <Avatar
+                name={displayName}
+                src={profileImageUrl}
+                size="lg"
+                className="border-4 border-white dark:border-slate-900"
+                alt={`${displayName} profile picture`}
               />
+              <div className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-white ring-2 ring-white dark:bg-white dark:text-slate-950 dark:ring-slate-900">
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              </div>
             </div>
-            {/* Optional action button here */}
+            <div className="flex flex-wrap gap-2 sm:pb-2">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="sr-only"
+                onChange={handleImageChange}
+              />
+              <Button
+                variant="secondary"
+                disabled={isUploading}
+                onClick={() => inputRef.current?.click()}
+              >
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {profileImageUrl ? "Replace Photo" : "Upload Photo"}
+              </Button>
+              {profileImageUrl && (
+                <Button
+                  variant="ghost"
+                  disabled={isUploading}
+                  onClick={handleRemoveImage}
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              )}
+            </div>
           </div>
           
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{displayName}</h2>

@@ -11,6 +11,7 @@ const initialState = {
   // No token = no session to initialize. Token present = wait for /me hydration.
   initialized: !storedToken,
   status: "idle",
+  profileImageStatus: "idle",
   error: null,
 };
 
@@ -51,7 +52,10 @@ export const fetchMeThunk = createAsyncThunk(
       const response = await apiClient.get("/auth/me");
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+      return rejectWithValue({
+        message: err.response?.data?.message || err.message || "Session refresh failed",
+        status: err.response?.status || 0,
+      });
     }
   }
 );
@@ -64,6 +68,44 @@ export const updateProfileThunk = createAsyncThunk(
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message || "Update failed");
+    }
+  }
+);
+
+export const updateProfileImageThunk = createAsyncThunk(
+  "auth/updateProfileImage",
+  async (file, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("profileImage", file);
+      const response = await apiClient.patch("/auth/profile/image", formData);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message || "Image upload failed");
+    }
+  }
+);
+
+export const removeProfileImageThunk = createAsyncThunk(
+  "auth/removeProfileImage",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.delete("/auth/profile/image");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message || "Image removal failed");
+    }
+  }
+);
+
+export const changePasswordThunk = createAsyncThunk(
+  "auth/changePassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.patch("/auth/change-password", payload);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message || "Password update failed");
     }
   }
 );
@@ -135,20 +177,54 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         localStorage.setItem("ewms:user", JSON.stringify(action.payload.user));
       })
-      .addCase(fetchMeThunk.rejected, (state) => {
-        // Token invalid / expired — clear session
+      .addCase(fetchMeThunk.rejected, (state, action) => {
+        const status = action.payload?.status;
         state.status = "failed";
         state.initialized = true;
-        state.user = null;
-        state.token = null;
-        localStorage.removeItem("ewms:user");
-        localStorage.removeItem("ewms:token");
+        state.error = action.payload?.message || action.error.message;
+
+        if (status === 401 || status === 403 || status === 404) {
+          state.user = null;
+          state.token = null;
+          localStorage.removeItem("ewms:user");
+          localStorage.removeItem("ewms:token");
+        }
       })
 
       // UPDATE PROFILE
       .addCase(updateProfileThunk.fulfilled, (state, action) => {
         state.user = { ...state.user, ...action.payload.user };
         localStorage.setItem("ewms:user", JSON.stringify(state.user));
+      })
+
+      // UPDATE PROFILE IMAGE
+      .addCase(updateProfileImageThunk.pending, (state) => {
+        state.profileImageStatus = "loading";
+        state.error = null;
+      })
+      .addCase(updateProfileImageThunk.fulfilled, (state, action) => {
+        state.profileImageStatus = "succeeded";
+        state.user = { ...state.user, ...action.payload.user };
+        localStorage.setItem("ewms:user", JSON.stringify(state.user));
+      })
+      .addCase(updateProfileImageThunk.rejected, (state, action) => {
+        state.profileImageStatus = "failed";
+        state.error = action.payload || action.error.message;
+      })
+
+      // REMOVE PROFILE IMAGE
+      .addCase(removeProfileImageThunk.pending, (state) => {
+        state.profileImageStatus = "loading";
+        state.error = null;
+      })
+      .addCase(removeProfileImageThunk.fulfilled, (state, action) => {
+        state.profileImageStatus = "succeeded";
+        state.user = { ...state.user, ...action.payload.user };
+        localStorage.setItem("ewms:user", JSON.stringify(state.user));
+      })
+      .addCase(removeProfileImageThunk.rejected, (state, action) => {
+        state.profileImageStatus = "failed";
+        state.error = action.payload || action.error.message;
       })
 
       // EC2: if admin edits the currently-logged-in user, keep auth.user in sync

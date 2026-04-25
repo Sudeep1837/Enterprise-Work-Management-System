@@ -2,13 +2,13 @@ import { useMemo, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  AreaChart, Area, Legend, PieChart, Pie, Cell,
+  AreaChart, Area, Legend,
 } from "recharts";
-import { PageCard, PageHeader, Badge, EmptyState, Button } from "../common/components/UI";
+import { PageCard, PageHeader } from "../common/components/UI";
 import { DonutChartCard, StripMetric, InsightCard, CustomChartTooltip } from "../common/components/Analytics";
 import {
   selectDashboardMetrics, selectWorkloadMetrics, selectWeeklyTrend,
-  selectProjectStatusData, selectOverdueVsCompleted, selectDueSoonTasks, selectProjectHealth,
+  selectOverdueVsCompleted, selectDueSoonTasks, selectProjectHealth,
 } from "../../store/selectors";
 import {
   BarChart3, Filter, ShieldAlert, TrendingUp, Clock, CheckCircle2,
@@ -18,6 +18,16 @@ import { isAdmin, isManager, isEmployee } from "../../lib/permissions";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const PROJECT_STATUS_COLORS = { Planning: "#818cf8", Active: "#10b981", "On Hold": "#f59e0b", Completed: "#6366f1" };
+const compactChartMargin = { top: 10, right: 10, left: -20, bottom: 0 };
+const projectChartMargin = { top: 5, right: 10, left: -20, bottom: 5 };
+const workloadChartMargin = { top: 10, right: 20, left: -20, bottom: 0 };
+const axisTick = { fill: "#64748b", fontSize: 12 };
+const projectAxisTick = { fill: "#64748b", fontSize: 11 };
+const gridStroke = "#334155";
+const dashedCursor = { stroke: "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" };
+const barCursor = { fill: "rgba(99,102,241,0.05)" };
+const legendStyle = { fontSize: "12px", paddingTop: "12px" };
+const chartTooltip = <CustomChartTooltip />;
 
 // ─── CSV Export helper ────────────────────────────────────────────────────────
 function exportToCSV(filename, rows) {
@@ -68,20 +78,23 @@ function ScopeBanner({ role }) {
 
 // ─── Delivery Trend Chart ─────────────────────────────────────────────────────
 function DeliveryTrendCard({ trendData }) {
-  const totalCreated = trendData.reduce((a, d) => a + d.created, 0);
-  const totalCompleted = trendData.reduce((a, d) => a + d.completed, 0);
-  const peak = Math.max(...trendData.map((d) => d.created), 1);
+  const summary = useMemo(() => {
+    const totalCreated = trendData.reduce((a, d) => a + d.created, 0);
+    const totalCompleted = trendData.reduce((a, d) => a + d.completed, 0);
+    const peak = Math.max(...trendData.map((d) => d.created), 1);
+    return { totalCreated, totalCompleted, peak };
+  }, [trendData]);
   return (
     <PageCard title="Throughput Trajectory" subtitle="Tasks created vs completed over the last 7 days">
       <div className="mt-6 flex flex-col gap-4 md:flex-row">
         <div className="flex w-full shrink-0 flex-col gap-5 md:w-40">
-          <StripMetric label="Created (7d)" value={totalCreated} sub="New Tasks" />
-          <StripMetric label="Completed (7d)" value={totalCompleted} sub="Done" />
-          <StripMetric label="Peak Day" value={peak} sub="Tasks" />
+          <StripMetric label="Created (7d)" value={summary.totalCreated} sub="New Tasks" />
+          <StripMetric label="Completed (7d)" value={summary.totalCompleted} sub="Done" />
+          <StripMetric label="Peak Day" value={summary.peak} sub="Tasks" />
         </div>
         <div className="h-[260px] w-full flex-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <AreaChart data={trendData} margin={compactChartMargin}>
               <defs>
                 <linearGradient id="gradCreated" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#818cf8" stopOpacity={0.25} />
@@ -92,13 +105,13 @@ function DeliveryTrendCard({ trendData }) {
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.12} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} dy={8} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} allowDecimals={false} />
-              <Tooltip content={<CustomChartTooltip />} cursor={{ stroke: "#cbd5e1", strokeWidth: 1, strokeDasharray: "4 4" }} />
-              <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }} />
-              <Area type="monotone" dataKey="created" name="Created" stroke="#818cf8" strokeWidth={2.5} fillOpacity={1} fill="url(#gradCreated)" animationDuration={1200} />
-              <Area type="monotone" dataKey="completed" name="Completed" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#gradCompleted)" animationDuration={1400} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} opacity={0.12} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTick} dy={8} />
+              <YAxis axisLine={false} tickLine={false} tick={axisTick} allowDecimals={false} />
+              <Tooltip content={chartTooltip} cursor={dashedCursor} />
+              <Legend wrapperStyle={legendStyle} />
+              <Area type="monotone" dataKey="created" name="Created" stroke="#818cf8" strokeWidth={2.5} fillOpacity={1} fill="url(#gradCreated)" isAnimationActive={false} />
+              <Area type="monotone" dataKey="completed" name="Completed" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#gradCompleted)" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -109,22 +122,22 @@ function DeliveryTrendCard({ trendData }) {
 
 // ─── Overdue vs Completed Grouped Bar ─────────────────────────────────────────
 function OverdueVsCompletedCard({ data }) {
-  const hasData = data.some((d) => d.Completed > 0 || d.Overdue > 0);
+  const hasData = useMemo(() => data.some((d) => d.Completed > 0 || d.Overdue > 0), [data]);
   return (
     <PageCard title="Risk vs Delivery" subtitle="Overdue vs completed tasks by priority level">
       {!hasData ? (
         <div className="py-16 text-center text-sm text-slate-400">No task data available yet</div>
       ) : (
         <div className="mt-6 h-[260px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={22} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.12} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} allowDecimals={false} />
-              <Tooltip content={<CustomChartTooltip />} cursor={{ fill: "rgba(99,102,241,0.05)" }} />
-              <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }} />
-              <Bar dataKey="Completed" name="Completed" fill="#10b981" radius={[5, 5, 0, 0]} animationDuration={1200} />
-              <Bar dataKey="Overdue" name="Overdue" fill="#f43f5e" radius={[5, 5, 0, 0]} animationDuration={1400} />
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <BarChart data={data} margin={compactChartMargin} barSize={22} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} opacity={0.12} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTick} />
+              <YAxis axisLine={false} tickLine={false} tick={axisTick} allowDecimals={false} />
+              <Tooltip content={chartTooltip} cursor={barCursor} />
+              <Legend wrapperStyle={legendStyle} />
+              <Bar dataKey="Completed" name="Completed" fill="#10b981" radius={[5, 5, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="Overdue" name="Overdue" fill="#f43f5e" radius={[5, 5, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -135,22 +148,22 @@ function OverdueVsCompletedCard({ data }) {
 
 // ─── Project Performance Comparison ───────────────────────────────────────────
 function ProjectPerformanceCard({ projectHealth }) {
-  const data = projectHealth.slice(0, 8).map((p) => ({
+  const data = useMemo(() => projectHealth.slice(0, 8).map((p) => ({
     name: p.name.length > 14 ? p.name.slice(0, 14) + "…" : p.name,
     Progress: p.progress,
     Tasks: p.taskCount,
-  }));
+  })), [projectHealth]);
   if (!data.length) return null;
   return (
     <PageCard title="Project Performance" subtitle="Completion progress across all projects">
       <div className="mt-6 h-[280px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }} barSize={22}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.12} />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} angle={-15} textAnchor="end" interval={0} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} allowDecimals={false} unit="%" />
-            <Tooltip content={<CustomChartTooltip />} cursor={{ fill: "rgba(99,102,241,0.05)" }} />
-            <Bar dataKey="Progress" name="Progress %" fill="#6366f1" radius={[5, 5, 0, 0]} animationDuration={1200} />
+        <ResponsiveContainer width="100%" height="100%" debounce={100}>
+          <BarChart data={data} margin={projectChartMargin} barSize={22}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} opacity={0.12} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={projectAxisTick} angle={-15} textAnchor="end" interval={0} />
+            <YAxis axisLine={false} tickLine={false} tick={axisTick} allowDecimals={false} unit="%" />
+            <Tooltip content={chartTooltip} cursor={barCursor} />
+            <Bar dataKey="Progress" name="Progress %" fill="#6366f1" radius={[5, 5, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -160,24 +173,24 @@ function ProjectPerformanceCard({ projectHealth }) {
 
 // ─── Resource Allocation ──────────────────────────────────────────────────────
 function ResourceAllocationCard({ workload }) {
-  const workloadData = workload.slice(0, 8).map((u) => ({
+  const workloadData = useMemo(() => workload.slice(0, 8).map((u) => ({
     name: u.name.split(" ")[0],
     Active: u.activeTaskCount,
     Overdue: u.overdueTaskCount,
-  }));
+  })), [workload]);
   if (!workloadData.length) return null;
   return (
     <PageCard title="Resource Allocation" subtitle="Active and overdue task load per team member">
       <div className="mt-6 h-[280px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={workloadData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }} barSize={28} barGap={4}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.12} />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} dy={8} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} allowDecimals={false} />
-            <Tooltip content={<CustomChartTooltip />} cursor={{ fill: "rgba(99,102,241,0.05)" }} />
-            <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }} />
-            <Bar dataKey="Active" name="Active Tasks" fill="#818cf8" radius={[5, 5, 0, 0]} animationDuration={1200} />
-            <Bar dataKey="Overdue" name="Overdue Tasks" fill="#f43f5e" radius={[5, 5, 0, 0]} animationDuration={1400} />
+        <ResponsiveContainer width="100%" height="100%" debounce={100}>
+          <BarChart data={workloadData} margin={workloadChartMargin} barSize={28} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} opacity={0.12} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTick} dy={8} />
+            <YAxis axisLine={false} tickLine={false} tick={axisTick} allowDecimals={false} />
+            <Tooltip content={chartTooltip} cursor={barCursor} />
+            <Legend wrapperStyle={legendStyle} />
+            <Bar dataKey="Active" name="Active Tasks" fill="#818cf8" radius={[5, 5, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="Overdue" name="Overdue Tasks" fill="#f43f5e" radius={[5, 5, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -190,7 +203,6 @@ export default function ReportsPage() {
   const metrics       = useSelector(selectDashboardMetrics);
   const workload      = useSelector(selectWorkloadMetrics);
   const trendData     = useSelector(selectWeeklyTrend);
-  const projectStatus = useSelector(selectProjectStatusData);
   const overdueVsComp = useSelector(selectOverdueVsCompleted);
   const dueSoon       = useSelector(selectDueSoonTasks);
   const projectHealth = useSelector(selectProjectHealth);

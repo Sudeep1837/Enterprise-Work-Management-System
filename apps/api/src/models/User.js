@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     // For employees: the manager they report to (must be a user with role="manager")
     managerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     avatar: { type: String, default: "" },
+    profileImageUrl: { type: String, default: "" },
+    profileImagePublicId: { type: String, default: "" },
     active: { type: Boolean, default: true },
     status: { type: String, enum: ["online", "offline", "busy"], default: "offline" },
     lastActiveAt: { type: Date, default: Date.now },

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area } from "recharts";
 import { PageCard } from "./UI";
@@ -49,8 +49,11 @@ export const CustomChartTooltip = ({ active, payload }) => {
   return null;
 };
 
+const donutTooltip = <CustomChartTooltip />;
+
 export function DonutChartCard({ title, subtitle, data, emptyMessage = "No data available" }) {
-  const hasData = data && data.length > 0 && data.some((d) => d.value > 0);
+  const visibleData = useMemo(() => (data || []).filter((d) => d.value > 0), [data]);
+  const hasData = visibleData.length > 0;
 
   return (
     <PageCard title={title} subtitle={subtitle} className="flex h-full flex-col">
@@ -60,25 +63,24 @@ export function DonutChartCard({ title, subtitle, data, emptyMessage = "No data 
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie 
-                  data={data.filter(d => d.value > 0)} 
+                  data={visibleData}
                   dataKey="value" 
                   innerRadius={65}
                   outerRadius={90}
                   paddingAngle={5}
                   stroke="none"
-                  animationBegin={100}
-                  animationDuration={1200}
+                  isAnimationActive={false}
                 >
-                  {data.filter(d => d.value > 0).map((entry, i) => (
+                  {visibleData.map((entry, i) => (
                     <Cell key={entry.name} fill={entry.color || defaultColors[i % defaultColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomChartTooltip />} />
+                <Tooltip content={donutTooltip} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2">
-            {data.filter(d => d.value > 0).map((entry, i) => (
+            {visibleData.map((entry, i) => (
               <div key={entry.name} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                 <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color || defaultColors[i % defaultColors.length] }} />
                 {entry.name} ({entry.value})

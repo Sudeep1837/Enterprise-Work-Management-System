@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { setTheme } from "../../store/workSlice";
-import { updateProfileThunk } from "../../store/authSlice";
+import { changePasswordThunk, updateProfileThunk } from "../../store/authSlice";
 import { toast } from "react-toastify";
 import { PageCard, PageHeader, Button } from "../common/components/UI";
 import ProfileForm from "./components/ProfileForm";
@@ -90,9 +90,14 @@ export default function SettingsPage() {
         </div>
         <div className="md:col-span-2">
           <PageCard>
-            <PasswordForm onSubmit={() => {
-              toast.success("Password updated successfully");
-            }} />
+            <PasswordForm
+              onSubmit={(values) =>
+                dispatch(changePasswordThunk(values))
+                  .unwrap()
+                  .then((result) => toast.success(result.message || "Password updated successfully"))
+                  .catch((err) => toast.error(err || "Failed to update password"))
+              }
+            />
           </PageCard>
         </div>
       </div>

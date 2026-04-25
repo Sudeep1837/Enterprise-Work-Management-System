@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import { sanitizeUser } from "./authService.js";
+import { deleteCloudinaryAsset, uploadProfileImage } from "./cloudinaryService.js";
 
 /**
  * Strict employee hierarchy validation.
@@ -55,7 +56,7 @@ export async function listUsers(requestingUser) {
   }
 
   const users = await User.find(query)
-    .populate("managerId", "name email")
+    .populate("managerId", "name email profileImageUrl")
     .lean();
 
   return users.map((u) => {
@@ -69,6 +70,7 @@ export async function listUsers(requestingUser) {
             id: u.managerId._id.toString(),
             name: u.managerId.name,
             email: u.managerId.email,
+            profileImageUrl: u.managerId.profileImageUrl || "",
           }
         : null,
     };
@@ -105,7 +107,7 @@ export async function createUser(payload) {
   await user.save();
 
   // Re-fetch with populated managerId for consistent response shape
-  const populated = await User.findById(user._id).populate("managerId", "name email");
+  const populated = await User.findById(user._id).populate("managerId", "name email profileImageUrl");
   return sanitizeUserWithManager(populated);
 }
 
@@ -156,11 +158,49 @@ export async function updateUser(id, payload) {
 
   const user = await User.findByIdAndUpdate(id, updateData, { new: true }).populate(
     "managerId",
-    "name email"
+    "name email profileImageUrl"
   );
   if (!user) return null;
 
   return sanitizeUserWithManager(user);
+}
+
+export async function updateOwnProfileImage(id, file) {
+  const existingUser = await User.findById(id);
+  if (!existingUser) return null;
+
+  const uploaded = await uploadProfileImage(file, id);
+  const previousPublicId = existingUser.profileImagePublicId;
+
+  existingUser.profileImageUrl = uploaded.secure_url;
+  existingUser.profileImagePublicId = uploaded.public_id;
+  await existingUser.save();
+
+  if (previousPublicId && previousPublicId !== uploaded.public_id) {
+    deleteCloudinaryAsset(previousPublicId).catch((error) => {
+      console.warn(`Failed to delete previous profile image ${previousPublicId}: ${error.message}`);
+    });
+  }
+
+  const populated = await User.findById(id).populate("managerId", "name email profileImageUrl");
+  return sanitizeUserWithManager(populated);
+}
+
+export async function removeOwnProfileImage(id) {
+  const existingUser = await User.findById(id);
+  if (!existingUser) return null;
+
+  const previousPublicId = existingUser.profileImagePublicId;
+  if (previousPublicId) {
+    await deleteCloudinaryAsset(previousPublicId);
+  }
+
+  existingUser.profileImageUrl = "";
+  existingUser.profileImagePublicId = "";
+  await existingUser.save();
+
+  const populated = await User.findById(id).populate("managerId", "name email profileImageUrl");
+  return sanitizeUserWithManager(populated);
 }
 
 /**
@@ -177,6 +217,7 @@ function sanitizeUserWithManager(user) {
           id: user.managerId._id?.toString() || user.managerId.id,
           name: user.managerId.name,
           email: user.managerId.email,
+          profileImageUrl: user.managerId.profileImageUrl || "",
         }
       : null,
   };

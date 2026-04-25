@@ -3,14 +3,18 @@ import { TASK_STATUSES, TASK_PRIORITIES, TASK_TYPES } from "../constants/roles";
 
 const selectWork = (state) => state.work;
 const selectAuth = (state) => state.auth;
+const selectProjects = (state) => state.work.projects;
+const selectTasks = (state) => state.work.tasks;
+const selectUsers = (state) => state.work.users;
+const selectNotifications = (state) => state.work.notifications;
 
 // ─── Dashboard Metrics ────────────────────────────────────────────────────────
-export const selectDashboardMetrics = createSelector([selectWork], (work) => {
+export const selectDashboardMetrics = createSelector([selectProjects, selectTasks, selectNotifications], (projects, tasks, notifications) => {
   const now = new Date();
-  const overdue = work.tasks.filter(
+  const overdue = tasks.filter(
     (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "Done"
   );
-  const completed = work.tasks.filter((t) => t.status === "Done");
+  const completed = tasks.filter((t) => t.status === "Done");
 
   // Tasks completed this week (updatedAt within 7 days and status Done)
   const weekAgo = new Date();
@@ -20,35 +24,35 @@ export const selectDashboardMetrics = createSelector([selectWork], (work) => {
   );
 
   return {
-    totalProjects: work.projects.length,
-    totalTasks: work.tasks.length,
+    totalProjects: projects.length,
+    totalTasks: tasks.length,
     completedTasks: completed.length,
-    pendingTasks: work.tasks.length - completed.length,
+    pendingTasks: tasks.length - completed.length,
     overdueTasks: overdue.length,
     completedThisWeek: completedThisWeek.length,
-    unreadNotifications: work.notifications.filter((n) => !n.read).length,
+    unreadNotifications: notifications.filter((n) => !n.read).length,
     statusData: TASK_STATUSES.map((status) => ({
       name: status,
-      value: work.tasks.filter((t) => t.status === status).length,
+      value: tasks.filter((t) => t.status === status).length,
     })),
     priorityData: TASK_PRIORITIES.map((priority) => ({
       name: priority,
-      value: work.tasks.filter((t) => t.priority === priority).length,
+      value: tasks.filter((t) => t.priority === priority).length,
     })),
     typeData: TASK_TYPES.map((type) => ({
       name: type,
-      value: work.tasks.filter((t) => t.type === type).length,
+      value: tasks.filter((t) => t.type === type).length,
     })),
-    completionRate: work.tasks.length
-      ? Math.round((completed.length / work.tasks.length) * 100)
+    completionRate: tasks.length
+      ? Math.round((completed.length / tasks.length) * 100)
       : 0,
   };
 });
 
 // ─── Project Health ───────────────────────────────────────────────────────────
-export const selectProjectHealth = createSelector([selectWork], (work) => {
-  return work.projects.map((project) => {
-    const projectTasks = work.tasks.filter(
+export const selectProjectHealth = createSelector([selectProjects, selectTasks], (projects, tasks) => {
+  return projects.map((project) => {
+    const projectTasks = tasks.filter(
       (t) => t.projectId?.toString() === project.id?.toString()
     );
     const completed = projectTasks.filter((t) => t.status === "Done").length;
@@ -122,15 +126,15 @@ export const selectKanbanMetrics = createSelector([selectWork], (work) => {
 });
 
 // ─── Workload Metrics ─────────────────────────────────────────────────────────
-export const selectWorkloadMetrics = createSelector([selectWork], (work) => {
-  if (!work.users || !work.users.length) return [];
+export const selectWorkloadMetrics = createSelector([selectUsers, selectTasks], (users, tasks) => {
+  if (!users || !users.length) return [];
 
-  return work.users
+  return users
     .map((user) => {
-      const activeTasks = work.tasks.filter(
+      const activeTasks = tasks.filter(
         (t) => t.assigneeId?.toString() === user.id?.toString() && t.status !== "Done"
       );
-      const completedTasks = work.tasks.filter(
+      const completedTasks = tasks.filter(
         (t) => t.assigneeId?.toString() === user.id?.toString() && t.status === "Done"
       );
       const overdueTasks = activeTasks.filter(
@@ -158,13 +162,13 @@ export const selectMyTasks = createSelector([selectWork, selectAuth], (work, aut
 });
 
 // ─── Tasks Due Soon (next 7 days, not Done) ───────────────────────────────────
-export const selectDueSoonTasks = createSelector([selectWork, selectAuth], (work, auth) => {
+export const selectDueSoonTasks = createSelector([selectTasks, selectAuth], (tasks, auth) => {
   const now = new Date();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + 7);
   const userId = auth.user?.id || auth.user?._id;
 
-  return work.tasks
+  return tasks
     .filter((t) => {
       if (!t.dueDate || t.status === "Done") return false;
       const due = new Date(t.dueDate);
@@ -188,12 +192,12 @@ export const selectScopedTasks = createSelector([selectWork], (work) => work.tas
 export const selectScopedProjects = createSelector([selectWork], (work) => work.projects);
 
 // ─── Project Status Distribution ──────────────────────────────────────────────
-export const selectProjectStatusData = createSelector([selectWork], (work) => {
+export const selectProjectStatusData = createSelector([selectProjects], (projects) => {
   const statuses = ["Planning", "Active", "On Hold", "Completed"];
   return statuses
     .map((s) => ({
       name: s,
-      value: work.projects.filter((p) => p.status === s).length,
+      value: projects.filter((p) => p.status === s).length,
     }))
     .filter((s) => s.value > 0);
 });
@@ -207,7 +211,7 @@ export const selectProjectStatusData = createSelector([selectWork], (work) => {
  *
  * No Math.random(). Data reflects the actual workspace state.
  */
-export const selectWeeklyTrend = createSelector([selectWork], (work) => {
+export const selectWeeklyTrend = createSelector([selectTasks], (tasks) => {
   const data = [];
   for (let i = 6; i >= 0; i--) {
     const start = new Date();
@@ -218,13 +222,13 @@ export const selectWeeklyTrend = createSelector([selectWork], (work) => {
 
     const dayStr = start.toLocaleDateString("en-US", { weekday: "short" });
 
-    const created = work.tasks.filter((t) => {
+    const created = tasks.filter((t) => {
       if (!t.createdAt) return false;
       const d = new Date(t.createdAt);
       return d >= start && d <= end;
     }).length;
 
-    const completed = work.tasks.filter((t) => {
+    const completed = tasks.filter((t) => {
       if (t.status !== "Done" || !t.updatedAt) return false;
       const d = new Date(t.updatedAt);
       return d >= start && d <= end;
@@ -236,10 +240,10 @@ export const selectWeeklyTrend = createSelector([selectWork], (work) => {
 });
 
 // ─── Overdue vs Completed Bar Data ────────────────────────────────────────────
-export const selectOverdueVsCompleted = createSelector([selectWork], (work) => {
+export const selectOverdueVsCompleted = createSelector([selectTasks], (tasks) => {
   const now = new Date();
   return TASK_PRIORITIES.map((priority) => {
-    const priorityTasks = work.tasks.filter((t) => t.priority === priority);
+    const priorityTasks = tasks.filter((t) => t.priority === priority);
     return {
       name: priority,
       Completed: priorityTasks.filter((t) => t.status === "Done").length,

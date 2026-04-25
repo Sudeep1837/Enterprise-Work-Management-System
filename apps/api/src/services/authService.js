@@ -20,6 +20,7 @@ export function sanitizeUser(user) {
         id: user.managerId._id?.toString() || user.managerId.id,
         name: user.managerId.name,
         email: user.managerId.email,
+        profileImageUrl: user.managerId.profileImageUrl || "",
       };
     } else {
       // Raw ObjectId or string — keep as string, frontend will handle gracefully
@@ -78,9 +79,47 @@ export async function login(payload) {
   return { token: signToken(user), user: sanitizeUser(user) };
 }
 
+export async function changePassword(userId, payload) {
+  const currentPassword = payload.currentPassword || "";
+  const newPassword = payload.newPassword || "";
+  const confirmPassword = payload.confirmPassword || "";
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    throw new Error("Current password, new password, and confirmation are required");
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error("New password must be at least 8 characters");
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new Error("New password and confirmation do not match");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new Error("New password must be different from the current password");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  if (!user.active) throw new Error("User is deactivated");
+
+  const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!matches) {
+    const error = new Error("Current password is incorrect");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  return { message: "Password updated successfully" };
+}
+
 export async function getCurrentUser(id) {
   // Populate managerId for /me endpoint too
-  const user = await User.findById(id).populate("managerId", "name email");
+  const user = await User.findById(id).populate("managerId", "name email profileImageUrl");
   if (!user) return null;
   // EC4: deactivated users cannot refresh their session even with a valid JWT.
   // Returning null causes the /me controller to respond 401/404 →
@@ -88,4 +127,3 @@ export async function getCurrentUser(id) {
   if (!user.active) return null;
   return sanitizeUser(user);
 }
-

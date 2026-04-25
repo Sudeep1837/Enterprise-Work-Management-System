@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -23,23 +23,37 @@ function App() {
   const users = useSelector((state) => state.work.users);
   const theme = useSelector((state) => state.work.theme);
   const dispatch = useDispatch();
+  const currentUserRef = useRef(currentUser);
+  const usersRef = useRef(users);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
   useEffect(() => {
-    if (!token) return undefined;
-    
-    // Hydrate current user session, then load workspace data
-    dispatch(fetchMeThunk()).finally(() => {
-      // Always load workspace data regardless of /me outcome
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  useEffect(() => {
+    usersRef.current = users;
+  }, [users]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    dispatch(fetchMeThunk()).then((result) => {
+      if (!fetchMeThunk.rejected.match(result) || result.payload?.status === 0) {
       dispatch(fetchUsers());
       dispatch(fetchProjects());
       dispatch(fetchTasks());
       dispatch(fetchNotifications());
       dispatch(fetchActivity());
+      }
     });
+  }, [dispatch, token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
 
     const socket = connectSocket(token);
     socket.on("project:created", ({ project }) => dispatch(socketProjectUpserted(project)));
@@ -62,6 +76,8 @@ function App() {
     });
 
     socket.on("activity:created", (payload) => {
+      const currentUser = currentUserRef.current;
+      const users = usersRef.current;
       const currentUserId = currentUser?.id || currentUser?._id?.toString();
       const visibleTo = payload.visibleTo || [];
       const explicitlyScoped = visibleTo.length > 0;
@@ -87,7 +103,7 @@ function App() {
     socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
     return () => disconnectSocket();
-  }, [currentUser, dispatch, token, users]);
+  }, [dispatch, token]);
 
   return (
     <>

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { PageCard, PageHeader, Button, Badge, TableShell, EmptyState } from "../common/components/UI";
+import { PageCard, PageHeader, Button, Badge, TableShell, EmptyState, SkeletonList } from "../common/components/UI";
 import { InsightCard } from "../common/components/Analytics";
+import Avatar from "../common/components/Avatar";
 import { applyTextFilter } from "../common/utils/filtering";
 import { createUserAsync, updateUserAsync, fetchUsers } from "../../store/workSlice";
 import { selectWorkloadMetrics } from "../../store/selectors";
@@ -15,6 +16,7 @@ export default function UsersPage() {
   const dispatch = useDispatch();
   const workload = useSelector(selectWorkloadMetrics);
   const users = useSelector((state) => state.work.users);
+  const usersStatus = useSelector((state) => state.work.usersStatus);
   const currentUser = useSelector((state) => state.auth.user);
 
   const [query, setQuery] = useState("");
@@ -30,8 +32,10 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
-    dispatch(fetchUsers());
-  }, [dispatch]);
+    if (!users.length && usersStatus !== "loading") {
+      dispatch(fetchUsers());
+    }
+  }, [dispatch, users.length, usersStatus]);
 
   // Scroll to and briefly highlight the recently updated/created row.
   // 250ms delay gives React time to re-render the list after the edit panel closes.
@@ -56,13 +60,23 @@ export default function UsersPage() {
 
   // Join workload metrics onto base users
   const activeMap = useMemo(() => {
-    return workload.reduce((acc, w) => ({ ...acc, [w.id]: w }), {});
+    return workload.reduce((acc, w) => {
+      acc[w.id || w._id] = w;
+      return acc;
+    }, {});
   }, [workload]);
+
+  const usersById = useMemo(() => {
+    return users.reduce((acc, user) => {
+      acc[user.id || user._id] = user;
+      return acc;
+    }, {});
+  }, [users]);
 
   const jointUsers = useMemo(() => {
     return users.map((u) => ({
       ...u,
-      ...(activeMap[u.id] || { activeTaskCount: 0, completedTaskCount: 0, overdueTaskCount: 0 }),
+      ...(activeMap[u.id || u._id] || { activeTaskCount: 0, completedTaskCount: 0, overdueTaskCount: 0 }),
     }));
   }, [users, activeMap]);
 
@@ -86,10 +100,16 @@ export default function UsersPage() {
     if (typeof managerId === "object" && managerId.name) return managerId.name;
     // Raw ObjectId string — find in loaded users list if possible
     if (typeof managerId === "string") {
-      const found = users.find((u) => (u.id || u._id?.toString()) === managerId);
+      const found = usersById[managerId];
       return found ? found.name : "—";
     }
     return "—";
+  }
+
+  function resolveManager(managerId) {
+    if (!managerId) return null;
+    if (typeof managerId === "object") return managerId;
+    return usersById[managerId] || null;
   }
 
   return (
@@ -98,7 +118,7 @@ export default function UsersPage() {
         title={isAdmin(currentUser) ? "Team Directory" : "Your Team"}
         subtitle={
           isAdmin(currentUser)
-            ? "Manage workspace capacity, user access roles, and reporting hierarchy"
+            ? "Manage workspace capacity, roles, reporting hierarchy, and safe account activation"
             : "Team members in your scope — read-only view"
         }
         icon={Users}
@@ -159,7 +179,9 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {!filtered.length ? (
+        {usersStatus === "loading" && !users.length ? (
+          <SkeletonList rows={5} />
+        ) : !filtered.length ? (
           <EmptyState
             title={
               isAdmin(currentUser)
@@ -197,6 +219,7 @@ export default function UsersPage() {
                   const isHighlighted = uid === updatedUserId;
                   const roleColors = getRoleColors(user.role);
                   const managerName = resolveManagerName(user.managerId);
+                  const manager = resolveManager(user.managerId);
 
                   return (
                     <tr
@@ -211,11 +234,7 @@ export default function UsersPage() {
                       {/* User cell */}
                       <td className="whitespace-nowrap px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-800"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=c7d2fe&color=3730a3&bold=true`}
-                            alt=""
-                          />
+                          <Avatar name={user.name} src={user.profileImageUrl} alt={`${user.name} avatar`} />
                           <div>
                             <p className="text-sm font-medium text-slate-900 dark:text-white">
                               {user.name}
@@ -250,10 +269,11 @@ export default function UsersPage() {
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
                         {user.role === "employee" && managerName !== "—" ? (
                           <div className="flex items-center gap-2">
-                            <img
-                              className="h-5 w-5 rounded-full ring-1 ring-slate-200 dark:ring-slate-700"
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(managerName)}&background=e0e7ff&color=4338ca&bold=true&size=20`}
-                              alt=""
+                            <Avatar
+                              name={managerName}
+                              src={manager?.profileImageUrl}
+                              size="xs"
+                              alt={`${managerName} avatar`}
                             />
                             <span className="font-medium text-slate-700 dark:text-slate-300">
                               {managerName}
@@ -299,6 +319,11 @@ export default function UsersPage() {
                             </Button>
                             <Button
                               variant="ghost"
+                              title={
+                                user.isActive
+                                  ? "Deactivate account access while preserving historical work"
+                                  : "Restore account access"
+                              }
                               className={
                                 user.isActive
                                   ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"

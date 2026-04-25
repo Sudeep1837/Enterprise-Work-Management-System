@@ -4,10 +4,26 @@ import { readStorage, writeStorage } from "../lib/storage";
 import apiClient from "../services/apiClient";
 
 // Thunks for API calls
-export const fetchProjects = createAsyncThunk("work/fetchProjects", async () => {
-  const response = await apiClient.get("/projects");
-  return response.data;
-});
+const shouldFetchCollection = (state, key, statusKey, maxAgeMs = 60_000, options = {}) => {
+  if (options.force) return true;
+  const work = state.work;
+  if (work[statusKey] === "loading") return false;
+  const lastFetchedAt = work.lastFetchedAt?.[key] || 0;
+  const hasData = Array.isArray(work[key]) && work[key].length > 0;
+  return !hasData || Date.now() - lastFetchedAt > maxAgeMs;
+};
+
+export const fetchProjects = createAsyncThunk(
+  "work/fetchProjects",
+  async () => {
+    const response = await apiClient.get("/projects");
+    return response.data;
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "projects", "projectsStatus", 60_000, options),
+  }
+);
 
 export const createProject = createAsyncThunk("work/createProject", async (payload, { rejectWithValue }) => {
   try {
@@ -29,10 +45,17 @@ export const deleteProjectAsync = createAsyncThunk("work/deleteProject", async (
   return response.data || { id };
 });
 
-export const fetchTasks = createAsyncThunk("work/fetchTasks", async () => {
-  const response = await apiClient.get("/tasks");
-  return response.data;
-});
+export const fetchTasks = createAsyncThunk(
+  "work/fetchTasks",
+  async () => {
+    const response = await apiClient.get("/tasks");
+    return response.data;
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "tasks", "tasksStatus", 60_000, options),
+  }
+);
 
 export const createTask = createAsyncThunk("work/createTask", async (payload, { rejectWithValue }) => {
   try {
@@ -74,10 +97,17 @@ export const addTaskCommentAsync = createAsyncThunk("work/addTaskComment", async
   return { taskId: id, comment: response.data };
 });
 
-export const fetchNotifications = createAsyncThunk("work/fetchNotifications", async () => {
-  const response = await apiClient.get("/notifications");
-  return response.data;
-});
+export const fetchNotifications = createAsyncThunk(
+  "work/fetchNotifications",
+  async () => {
+    const response = await apiClient.get("/notifications");
+    return response.data;
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "notifications", "notificationsStatus", 30_000, options),
+  }
+);
 
 export const markNotificationReadAsync = createAsyncThunk("work/markNotificationRead", async (id) => {
   const response = await apiClient.put(`/notifications/${id}/read`);
@@ -94,10 +124,17 @@ export const markAllNotificationsReadAsync = createAsyncThunk("work/markAllNotif
   return true;
 });
 
-export const fetchUsers = createAsyncThunk("work/fetchUsers", async () => {
-  const response = await apiClient.get("/users");
-  return response.data.users;
-});
+export const fetchUsers = createAsyncThunk(
+  "work/fetchUsers",
+  async () => {
+    const response = await apiClient.get("/users");
+    return response.data.users;
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "users", "usersStatus", 60_000, options),
+  }
+);
 
 export const createUserAsync = createAsyncThunk("work/createUser", async (payload) => {
   const response = await apiClient.post("/users", payload);
@@ -109,10 +146,17 @@ export const updateUserAsync = createAsyncThunk("work/updateUser", async ({ id, 
   return response.data.user;
 });
 
-export const fetchActivity = createAsyncThunk("work/fetchActivity", async () => {
-  const response = await apiClient.get("/activity");
-  return response.data;
-});
+export const fetchActivity = createAsyncThunk(
+  "work/fetchActivity",
+  async () => {
+    const response = await apiClient.get("/activity");
+    return response.data;
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "activity", "activityStatus", 30_000, options),
+  }
+);
 
 const persisted = readStorage();
 
@@ -125,6 +169,12 @@ const initialState = {
   notifications: [],
   activity: [],
   status: "idle",
+  projectsStatus: "idle",
+  tasksStatus: "idle",
+  usersStatus: "idle",
+  notificationsStatus: "idle",
+  activityStatus: "idle",
+  lastFetchedAt: {},
   error: null,
 };
 
@@ -226,8 +276,17 @@ const workSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Projects
+      .addCase(fetchProjects.pending, (state) => {
+        state.projectsStatus = "loading";
+      })
       .addCase(fetchProjects.fulfilled, (state, action) => {
         state.projects = action.payload;
+        state.projectsStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.projects = Date.now();
+      })
+      .addCase(fetchProjects.rejected, (state) => {
+        state.projectsStatus = "failed";
       })
       .addCase(createProject.fulfilled, (state, action) => {
         const index = state.projects.findIndex((p) => (p.id || p._id?.toString()) === action.payload.id);
@@ -257,8 +316,17 @@ const workSlice = createSlice({
         }
       })
       // Tasks
+      .addCase(fetchTasks.pending, (state) => {
+        state.tasksStatus = "loading";
+      })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.tasks = action.payload;
+        state.tasksStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.tasks = Date.now();
+      })
+      .addCase(fetchTasks.rejected, (state) => {
+        state.tasksStatus = "failed";
       })
       .addCase(createTask.fulfilled, (state, action) => {
         const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === action.payload.id);
@@ -307,8 +375,17 @@ const workSlice = createSlice({
         }
       })
       // Users
+      .addCase(fetchUsers.pending, (state) => {
+        state.usersStatus = "loading";
+      })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.users = action.payload;
+        state.usersStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.users = Date.now();
+      })
+      .addCase(fetchUsers.rejected, (state) => {
+        state.usersStatus = "failed";
       })
       .addCase(createUserAsync.fulfilled, (state, action) => {
         const index = state.users.findIndex((u) => (u.id || u._id?.toString()) === action.payload.id);
@@ -325,8 +402,17 @@ const workSlice = createSlice({
         }
       })
       // Notifications
+      .addCase(fetchNotifications.pending, (state) => {
+        state.notificationsStatus = "loading";
+      })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.notifications = action.payload;
+        state.notificationsStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.notifications = Date.now();
+      })
+      .addCase(fetchNotifications.rejected, (state) => {
+        state.notificationsStatus = "failed";
       })
       .addCase(markNotificationReadAsync.fulfilled, (state, action) => {
         const notification = state.notifications.find((n) => n.id === action.payload.id);
@@ -339,8 +425,17 @@ const workSlice = createSlice({
         state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
       })
       // Activity
+      .addCase(fetchActivity.pending, (state) => {
+        state.activityStatus = "loading";
+      })
       .addCase(fetchActivity.fulfilled, (state, action) => {
         state.activity = action.payload;
+        state.activityStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.activity = Date.now();
+      })
+      .addCase(fetchActivity.rejected, (state) => {
+        state.activityStatus = "failed";
       });
   },
 });

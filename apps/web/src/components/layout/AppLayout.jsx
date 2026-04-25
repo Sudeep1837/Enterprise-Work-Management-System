@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 import CommandPalette from "../../features/search/CommandPalette";
+import Avatar from "../../features/common/components/Avatar";
 
 const links = [
   { name: "dashboard", icon: LayoutDashboard },
@@ -134,11 +135,7 @@ function SidebarContent({ onNavClick }) {
           {/* User info */}
           {user && (
             <div className="mb-3 flex items-center gap-3 rounded-xl border border-slate-200/60 px-3 py-2.5 dark:border-white/10">
-              <img
-                className="h-8 w-8 rounded-full bg-slate-100 object-cover ring-1 ring-slate-200 dark:ring-slate-800"
-                src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=c7d2fe&color=3730a3&bold=true`}
-                alt=""
-              />
+              <Avatar name={user?.name} src={user?.profileImageUrl} size="sm" alt={`${user?.name || "User"} avatar`} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
                 <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{user.role}</p>
@@ -428,11 +425,7 @@ export default function AppLayout() {
 
               {/* Avatar */}
               <div className="flex items-center gap-3 p-1">
-                <img
-                  className="h-8 w-8 rounded-full bg-slate-100 object-cover ring-1 ring-slate-200 dark:ring-slate-800"
-                  src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=c7d2fe&color=3730a3&bold=true`}
-                  alt=""
-                />
+                <Avatar name={user?.name} src={user?.profileImageUrl} size="sm" alt={`${user?.name || "User"} avatar`} />
                 <div className="hidden lg:flex lg:flex-col lg:items-start text-sm">
                   <span className="font-semibold text-slate-900 dark:text-white leading-tight">
                     {user?.name}
