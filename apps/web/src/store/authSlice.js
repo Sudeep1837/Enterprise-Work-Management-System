@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import apiClient from "../services/apiClient";
+import { getApiErrorMessage } from "../services/apiErrors";
 import { socketUserUpdated, updateUserAsync } from "./workSlice";
 
 const storedToken = localStorage.getItem("ewms:token");
@@ -25,7 +26,7 @@ export const loginThunk = createAsyncThunk(
       });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Login failed");
+      return rejectWithValue(getApiErrorMessage(err, "Login failed"));
     }
   }
 );
@@ -40,7 +41,7 @@ export const signupThunk = createAsyncThunk(
       });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Signup failed");
+      return rejectWithValue(getApiErrorMessage(err, "Signup failed"));
     }
   }
 );
@@ -53,7 +54,7 @@ export const fetchMeThunk = createAsyncThunk(
       return response.data;
     } catch (err) {
       return rejectWithValue({
-        message: err.response?.data?.message || err.message || "Session refresh failed",
+        message: getApiErrorMessage(err, "Session refresh failed"),
         status: err.response?.status || 0,
       });
     }
@@ -67,7 +68,7 @@ export const updateProfileThunk = createAsyncThunk(
       const response = await apiClient.patch("/auth/profile", payload);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Update failed");
+      return rejectWithValue(getApiErrorMessage(err, "Update failed"));
     }
   }
 );
@@ -81,7 +82,7 @@ export const updateProfileImageThunk = createAsyncThunk(
       const response = await apiClient.patch("/auth/profile/image", formData);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Image upload failed");
+      return rejectWithValue(getApiErrorMessage(err, "Image upload failed"));
     }
   }
 );
@@ -93,7 +94,7 @@ export const removeProfileImageThunk = createAsyncThunk(
       const response = await apiClient.delete("/auth/profile/image");
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Image removal failed");
+      return rejectWithValue(getApiErrorMessage(err, "Image removal failed"));
     }
   }
 );
@@ -105,7 +106,7 @@ export const changePasswordThunk = createAsyncThunk(
       const response = await apiClient.patch("/auth/change-password", payload);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Password update failed");
+      return rejectWithValue(getApiErrorMessage(err, "Password update failed"));
     }
   }
 );

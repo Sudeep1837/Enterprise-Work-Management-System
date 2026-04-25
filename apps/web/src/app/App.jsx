@@ -25,6 +25,7 @@ function App() {
   const dispatch = useDispatch();
   const currentUserRef = useRef(currentUser);
   const usersRef = useRef(users);
+  const apiToastShownRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -42,12 +43,18 @@ function App() {
     if (!token) return;
 
     dispatch(fetchMeThunk()).then((result) => {
-      if (!fetchMeThunk.rejected.match(result) || result.payload?.status === 0) {
-      dispatch(fetchUsers());
-      dispatch(fetchProjects());
-      dispatch(fetchTasks());
-      dispatch(fetchNotifications());
-      dispatch(fetchActivity());
+      if (fetchMeThunk.fulfilled.match(result)) {
+        dispatch(fetchUsers());
+        dispatch(fetchProjects());
+        dispatch(fetchTasks());
+        dispatch(fetchNotifications());
+        dispatch(fetchActivity());
+        return;
+      }
+
+      if (!apiToastShownRef.current) {
+        apiToastShownRef.current = true;
+        toast.warning(result.payload?.message || "Backend API is unavailable. Public pages still work, but workspace data cannot refresh yet.");
       }
     });
   }, [dispatch, token]);

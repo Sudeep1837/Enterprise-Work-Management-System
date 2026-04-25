@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "react-toastify";
 import { readStorage, writeStorage } from "../lib/storage";
 import apiClient from "../services/apiClient";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 // Thunks for API calls
 const shouldFetchCollection = (state, key, statusKey, maxAgeMs = 60_000, options = {}) => {
@@ -15,9 +16,13 @@ const shouldFetchCollection = (state, key, statusKey, maxAgeMs = 60_000, options
 
 export const fetchProjects = createAsyncThunk(
   "work/fetchProjects",
-  async () => {
-    const response = await apiClient.get("/projects");
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/projects");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load projects"));
+    }
   },
   {
     condition: (options, { getState }) =>
@@ -30,26 +35,38 @@ export const createProject = createAsyncThunk("work/createProject", async (paylo
     const response = await apiClient.post("/projects", payload);
     return response.data;
   } catch (err) {
-    const message = err.response?.data?.message || err.message || "Failed to create project";
+    const message = getApiErrorMessage(err, "Failed to create project");
     return rejectWithValue(message);
   }
 });
 
-export const updateProject = createAsyncThunk("work/updateProject", async ({ id, ...payload }) => {
-  const response = await apiClient.put(`/projects/${id}`, payload);
-  return response.data;
+export const updateProject = createAsyncThunk("work/updateProject", async ({ id, ...payload }, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.put(`/projects/${id}`, payload);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update project"));
+  }
 });
 
-export const deleteProjectAsync = createAsyncThunk("work/deleteProject", async (id) => {
-  const response = await apiClient.delete(`/projects/${id}`);
-  return response.data || { id };
+export const deleteProjectAsync = createAsyncThunk("work/deleteProject", async (id, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete(`/projects/${id}`);
+    return response.data || { id };
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete project"));
+  }
 });
 
 export const fetchTasks = createAsyncThunk(
   "work/fetchTasks",
-  async () => {
-    const response = await apiClient.get("/tasks");
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/tasks");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load tasks"));
+    }
   },
   {
     condition: (options, { getState }) =>
@@ -62,14 +79,18 @@ export const createTask = createAsyncThunk("work/createTask", async (payload, { 
     const response = await apiClient.post("/tasks", payload);
     return response.data;
   } catch (err) {
-    const message = err.response?.data?.message || err.message || "Failed to create task";
+    const message = getApiErrorMessage(err, "Failed to create task");
     return rejectWithValue(message);
   }
 });
 
-export const updateTaskAsync = createAsyncThunk("work/updateTask", async ({ id, ...payload }) => {
-  const response = await apiClient.put(`/tasks/${id}`, payload);
-  return response.data;
+export const updateTaskAsync = createAsyncThunk("work/updateTask", async ({ id, ...payload }, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.put(`/tasks/${id}`, payload);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update task"));
+  }
 });
 
 export const uploadTaskAttachmentAsync = createAsyncThunk(
@@ -81,7 +102,7 @@ export const uploadTaskAttachmentAsync = createAsyncThunk(
       const response = await apiClient.post(`/tasks/${id}/attachments`, formData);
       return response.data.task;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Failed to upload attachment");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to upload attachment"));
     }
   }
 );
@@ -93,19 +114,27 @@ export const removeTaskAttachmentAsync = createAsyncThunk(
       const response = await apiClient.delete(`/tasks/${id}/attachments/${attachmentId}`);
       return response.data.task;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message || "Failed to remove attachment");
+      return rejectWithValue(getApiErrorMessage(err, "Failed to remove attachment"));
     }
   }
 );
 
-export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ id, status }) => {
-  const response = await apiClient.put(`/tasks/${id}/status`, { status });
-  return response.data;
+export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ id, status }, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.put(`/tasks/${id}/status`, { status });
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update task status"));
+  }
 });
 
-export const deleteTaskAsync = createAsyncThunk("work/deleteTask", async (id) => {
-  const response = await apiClient.delete(`/tasks/${id}`);
-  return response.data || { id };
+export const deleteTaskAsync = createAsyncThunk("work/deleteTask", async (id, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete(`/tasks/${id}`);
+    return response.data || { id };
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete task"));
+  }
 });
 
 export const bulkUpdateTasksAsync = createAsyncThunk("work/bulkUpdateTasks", async (payload, { rejectWithValue }) => {
@@ -113,21 +142,29 @@ export const bulkUpdateTasksAsync = createAsyncThunk("work/bulkUpdateTasks", asy
     const response = await apiClient.patch("/tasks/bulk", payload);
     return response.data;
   } catch (err) {
-    const message = err.response?.data?.message || err.message || "Failed to update selected tasks";
+    const message = getApiErrorMessage(err, "Failed to update selected tasks");
     return rejectWithValue(message);
   }
 });
 
-export const addTaskCommentAsync = createAsyncThunk("work/addTaskComment", async ({ id, content }) => {
-  const response = await apiClient.post(`/tasks/${id}/comments`, { content });
-  return { taskId: id, comment: response.data };
+export const addTaskCommentAsync = createAsyncThunk("work/addTaskComment", async ({ id, content }, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.post(`/tasks/${id}/comments`, { content });
+    return { taskId: id, comment: response.data };
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to add comment"));
+  }
 });
 
 export const fetchNotifications = createAsyncThunk(
   "work/fetchNotifications",
-  async () => {
-    const response = await apiClient.get("/notifications");
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/notifications");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load notifications"));
+    }
   },
   {
     condition: (options, { getState }) =>
@@ -135,26 +172,42 @@ export const fetchNotifications = createAsyncThunk(
   }
 );
 
-export const markNotificationReadAsync = createAsyncThunk("work/markNotificationRead", async (id) => {
-  const response = await apiClient.put(`/notifications/${id}/read`);
-  return response.data;
+export const markNotificationReadAsync = createAsyncThunk("work/markNotificationRead", async (id, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.put(`/notifications/${id}/read`);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update notification"));
+  }
 });
 
-export const clearNotificationsAsync = createAsyncThunk("work/clearNotifications", async () => {
-  await apiClient.delete("/notifications/clear");
-  return [];
+export const clearNotificationsAsync = createAsyncThunk("work/clearNotifications", async (_, { rejectWithValue }) => {
+  try {
+    await apiClient.delete("/notifications/clear");
+    return [];
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear notifications"));
+  }
 });
 
-export const markAllNotificationsReadAsync = createAsyncThunk("work/markAllNotificationsRead", async () => {
-  await apiClient.put("/notifications/read-all");
-  return true;
+export const markAllNotificationsReadAsync = createAsyncThunk("work/markAllNotificationsRead", async (_, { rejectWithValue }) => {
+  try {
+    await apiClient.put("/notifications/read-all");
+    return true;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update notifications"));
+  }
 });
 
 export const fetchUsers = createAsyncThunk(
   "work/fetchUsers",
-  async () => {
-    const response = await apiClient.get("/users");
-    return response.data.users;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/users");
+      return response.data.users;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load users"));
+    }
   },
   {
     condition: (options, { getState }) =>
@@ -162,21 +215,33 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-export const createUserAsync = createAsyncThunk("work/createUser", async (payload) => {
-  const response = await apiClient.post("/users", payload);
-  return response.data.user;
+export const createUserAsync = createAsyncThunk("work/createUser", async (payload, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.post("/users", payload);
+    return response.data.user;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to create user"));
+  }
 });
 
-export const updateUserAsync = createAsyncThunk("work/updateUser", async ({ id, ...payload }) => {
-  const response = await apiClient.patch(`/users/${id}`, payload);
-  return response.data.user;
+export const updateUserAsync = createAsyncThunk("work/updateUser", async ({ id, ...payload }, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.patch(`/users/${id}`, payload);
+    return response.data.user;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to update user"));
+  }
 });
 
 export const fetchActivity = createAsyncThunk(
   "work/fetchActivity",
-  async () => {
-    const response = await apiClient.get("/activity");
-    return response.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/activity");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load activity"));
+    }
   },
   {
     condition: (options, { getState }) =>
@@ -311,8 +376,9 @@ const workSlice = createSlice({
         if (!state.lastFetchedAt) state.lastFetchedAt = {};
         state.lastFetchedAt.projects = Date.now();
       })
-      .addCase(fetchProjects.rejected, (state) => {
+      .addCase(fetchProjects.rejected, (state, action) => {
         state.projectsStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load projects";
       })
       .addCase(createProject.fulfilled, (state, action) => {
         const index = state.projects.findIndex((p) => (p.id || p._id?.toString()) === action.payload.id);
@@ -351,8 +417,9 @@ const workSlice = createSlice({
         if (!state.lastFetchedAt) state.lastFetchedAt = {};
         state.lastFetchedAt.tasks = Date.now();
       })
-      .addCase(fetchTasks.rejected, (state) => {
+      .addCase(fetchTasks.rejected, (state, action) => {
         state.tasksStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load tasks";
       })
       .addCase(createTask.fulfilled, (state, action) => {
         const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === action.payload.id);
@@ -418,8 +485,9 @@ const workSlice = createSlice({
         if (!state.lastFetchedAt) state.lastFetchedAt = {};
         state.lastFetchedAt.users = Date.now();
       })
-      .addCase(fetchUsers.rejected, (state) => {
+      .addCase(fetchUsers.rejected, (state, action) => {
         state.usersStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load users";
       })
       .addCase(createUserAsync.fulfilled, (state, action) => {
         const index = state.users.findIndex((u) => (u.id || u._id?.toString()) === action.payload.id);
@@ -445,8 +513,9 @@ const workSlice = createSlice({
         if (!state.lastFetchedAt) state.lastFetchedAt = {};
         state.lastFetchedAt.notifications = Date.now();
       })
-      .addCase(fetchNotifications.rejected, (state) => {
+      .addCase(fetchNotifications.rejected, (state, action) => {
         state.notificationsStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load notifications";
       })
       .addCase(markNotificationReadAsync.fulfilled, (state, action) => {
         const notification = state.notifications.find((n) => n.id === action.payload.id);
@@ -468,8 +537,9 @@ const workSlice = createSlice({
         if (!state.lastFetchedAt) state.lastFetchedAt = {};
         state.lastFetchedAt.activity = Date.now();
       })
-      .addCase(fetchActivity.rejected, (state) => {
+      .addCase(fetchActivity.rejected, (state, action) => {
         state.activityStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load activity";
       });
   },
 });
