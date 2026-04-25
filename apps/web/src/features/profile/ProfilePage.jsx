@@ -5,7 +5,12 @@ import { PageHeader, Button } from "../common/components/UI";
 import Avatar from "../common/components/Avatar";
 import { fetchUsers } from "../../store/workSlice";
 import { removeProfileImageThunk, updateProfileImageThunk } from "../../store/authSlice";
-import { UserCircle, Mail, Briefcase, Calendar, Camera, Loader2, Trash2, Upload } from "lucide-react";
+import { UserCircle, Mail, Briefcase, Calendar, Camera, Loader2, Trash2, Upload, UserCheck } from "lucide-react";
+
+function getManagerInfo(user) {
+  const manager = user?.managerId;
+  return manager && typeof manager === "object" && manager.name ? manager : null;
+}
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
@@ -18,6 +23,7 @@ export default function ProfilePage() {
   const displayEmail = profile.email || user?.email || "No email provided";
   const displayRole = user?.role || "Employee";
   const profileImageUrl = user?.profileImageUrl || "";
+  const manager = getManagerInfo(user);
   const isUploading = profileImageStatus === "loading";
 
   const handleImageChange = (event) => {
@@ -130,6 +136,29 @@ export default function ProfilePage() {
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-0.5">{displayRole}</p>
               </div>
             </div>
+
+            {user?.role === "employee" && (
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                  manager ? "bg-indigo-50 dark:bg-indigo-500/10" : "bg-slate-100 dark:bg-slate-800"
+                }`}>
+                  <UserCheck className={`h-5 w-5 tracking-tight ${
+                    manager ? "text-indigo-500 dark:text-indigo-300" : "text-slate-500 dark:text-slate-400"
+                  }`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Working Under</p>
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100 mt-0.5">
+                    {manager?.name || "Unassigned"}
+                  </p>
+                  {manager && (
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {[manager.email, manager.team].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">

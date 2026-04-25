@@ -16,7 +16,7 @@ import {
   FolderKanban, CheckSquare, Target, Activity,
   CheckCircle2, AlertTriangle, Clock, Flame,
   TrendingDown, User, Zap, MessageSquare, ArrowRight, Radio,
-  Archive, Trash2,
+  Archive, Trash2, UserCheck,
 } from "lucide-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -111,6 +111,46 @@ function MyTasksCard({ tasks }) {
           })}
         </div>
       )}
+    </PageCard>
+  );
+}
+
+function getManagerInfo(user) {
+  const manager = user?.managerId;
+  return manager && typeof manager === "object" && manager.name ? manager : null;
+}
+
+function WorkingUnderCard({ user }) {
+  const manager = getManagerInfo(user);
+
+  return (
+    <PageCard title="Working Under" subtitle="Your reporting relationship">
+      <div className="mt-2 flex items-center gap-4 rounded-xl border border-slate-200/60 bg-slate-50 px-4 py-4 dark:border-white/10 dark:bg-slate-800/30">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+          manager
+            ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"
+            : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+        }`}>
+          <UserCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Reports To
+          </p>
+          <p className="mt-0.5 truncate text-base font-bold text-slate-900 dark:text-white">
+            {manager?.name || "Unassigned"}
+          </p>
+          {manager ? (
+            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+              {[manager.email, manager.team].filter(Boolean).join(" · ")}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              No reporting manager is currently assigned.
+            </p>
+          )}
+        </div>
+      </div>
     </PageCard>
   );
 }
@@ -228,8 +268,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Employee: my tasks card */}
-      {!isAdmin && !isManager && <MyTasksCard tasks={myTasks} />}
+      {/* Employee: hierarchy and personal tasks */}
+      {!isAdmin && !isManager && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <WorkingUnderCard user={authUser} />
+          <MyTasksCard tasks={myTasks} />
+        </div>
+      )}
 
       {/* ── Analytics + Activity ─────────────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-3">

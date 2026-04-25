@@ -19,6 +19,9 @@ async function validateHierarchy(role, team, managerId) {
     if (!manager) {
       throw new Error("Selected reporting manager does not exist.");
     }
+    if (!manager.active) {
+      throw new Error("Selected reporting manager is deactivated.");
+    }
     if (manager.role !== "manager") {
       throw new Error("Reporting manager must have the 'manager' role.");
     }
@@ -56,7 +59,7 @@ export async function listUsers(requestingUser) {
   }
 
   const users = await User.find(query)
-    .populate("managerId", "name email profileImageUrl")
+    .populate("managerId", "name email team active profileImageUrl")
     .lean();
 
   return users.map((u) => {
@@ -65,11 +68,12 @@ export async function listUsers(requestingUser) {
       ...rest,
       id: u._id.toString(),
       isActive: active ?? true,
-      managerId: u.managerId
+      managerId: u.managerId && u.managerId.active !== false
         ? {
             id: u.managerId._id.toString(),
             name: u.managerId.name,
             email: u.managerId.email,
+            team: u.managerId.team || "",
             profileImageUrl: u.managerId.profileImageUrl || "",
           }
         : null,
@@ -107,7 +111,7 @@ export async function createUser(payload) {
   await user.save();
 
   // Re-fetch with populated managerId for consistent response shape
-  const populated = await User.findById(user._id).populate("managerId", "name email profileImageUrl");
+  const populated = await User.findById(user._id).populate("managerId", "name email team active profileImageUrl");
   return sanitizeUserWithManager(populated);
 }
 
@@ -158,7 +162,7 @@ export async function updateUser(id, payload) {
 
   const user = await User.findByIdAndUpdate(id, updateData, { new: true }).populate(
     "managerId",
-    "name email profileImageUrl"
+    "name email team active profileImageUrl"
   );
   if (!user) return null;
 
@@ -182,7 +186,7 @@ export async function updateOwnProfileImage(id, file) {
     });
   }
 
-  const populated = await User.findById(id).populate("managerId", "name email profileImageUrl");
+  const populated = await User.findById(id).populate("managerId", "name email team active profileImageUrl");
   return sanitizeUserWithManager(populated);
 }
 
@@ -199,7 +203,7 @@ export async function removeOwnProfileImage(id) {
   existingUser.profileImagePublicId = "";
   await existingUser.save();
 
-  const populated = await User.findById(id).populate("managerId", "name email profileImageUrl");
+  const populated = await User.findById(id).populate("managerId", "name email team active profileImageUrl");
   return sanitizeUserWithManager(populated);
 }
 
@@ -212,11 +216,12 @@ function sanitizeUserWithManager(user) {
   return {
     ...rest,
     isActive: active ?? true,
-    managerId: user.managerId
+    managerId: user.managerId && user.managerId.active !== false
       ? {
           id: user.managerId._id?.toString() || user.managerId.id,
           name: user.managerId.name,
           email: user.managerId.email,
+          team: user.managerId.team || "",
           profileImageUrl: user.managerId.profileImageUrl || "",
         }
       : null,

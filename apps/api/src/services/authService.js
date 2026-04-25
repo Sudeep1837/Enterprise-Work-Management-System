@@ -14,12 +14,13 @@ export function sanitizeUser(user) {
   // Normalize managerId: handle populated object, ObjectId, or null
   let managerIdOut = null;
   if (user.managerId) {
-    if (typeof user.managerId === "object" && user.managerId.name) {
+    if (typeof user.managerId === "object" && user.managerId.name && user.managerId.active !== false) {
       // Populated
       managerIdOut = {
         id: user.managerId._id?.toString() || user.managerId.id,
         name: user.managerId.name,
         email: user.managerId.email,
+        team: user.managerId.team || "",
         profileImageUrl: user.managerId.profileImageUrl || "",
       };
     } else {
@@ -119,7 +120,7 @@ export async function changePassword(userId, payload) {
 
 export async function getCurrentUser(id) {
   // Populate managerId for /me endpoint too
-  const user = await User.findById(id).populate("managerId", "name email profileImageUrl");
+  const user = await User.findById(id).populate("managerId", "name email team active profileImageUrl");
   if (!user) return null;
   // EC4: deactivated users cannot refresh their session even with a valid JWT.
   // Returning null causes the /me controller to respond 401/404 →

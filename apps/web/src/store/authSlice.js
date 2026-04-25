@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import apiClient from "../services/apiClient";
-import { updateUserAsync } from "./workSlice";
+import { socketUserUpdated, updateUserAsync } from "./workSlice";
 
 const storedToken = localStorage.getItem("ewms:token");
 const storedUser = JSON.parse(localStorage.getItem("ewms:user") || "null");
@@ -232,6 +232,14 @@ const authSlice = createSlice({
       .addCase(updateUserAsync.fulfilled, (state, action) => {
         const updatedId = action.payload?.id || action.payload?._id?.toString();
         const currentId = state.user?.id   || state.user?._id?.toString();
+        if (updatedId && currentId && updatedId === currentId) {
+          state.user = { ...state.user, ...action.payload };
+          localStorage.setItem("ewms:user", JSON.stringify(state.user));
+        }
+      })
+      .addCase(socketUserUpdated, (state, action) => {
+        const updatedId = action.payload?.id || action.payload?._id?.toString();
+        const currentId = state.user?.id || state.user?._id?.toString();
         if (updatedId && currentId && updatedId === currentId) {
           state.user = { ...state.user, ...action.payload };
           localStorage.setItem("ewms:user", JSON.stringify(state.user));
