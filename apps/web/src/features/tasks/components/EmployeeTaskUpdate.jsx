@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { updateTaskAsync, addTaskCommentAsync } from "../../../store/workSlice";
+import { updateTaskAsync, addTaskCommentAsync, uploadTaskAttachmentAsync } from "../../../store/workSlice";
 import { Button, Badge } from "../../common/components/UI";
 import { TASK_STATUSES } from "../../../constants/roles";
 import { CheckCircle2, MessageSquare, Paperclip, Send, Info, Lock } from "lucide-react";
@@ -22,6 +22,7 @@ export default function EmployeeTaskUpdate({ task, onCancel, onSuccess }) {
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const isDone = task?.status === "Done";
 
@@ -82,24 +83,20 @@ export default function EmployeeTaskUpdate({ task, onCancel, onSuccess }) {
   };
 
   // ── Attach file ───────────────────────────────────────────────────────────
-  const uploadAttachment = (e) => {
+  const uploadAttachment = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const newAttachment = {
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-    };
-    dispatch(
-      updateTaskAsync({
-        id: task.id || task._id,
-        attachments: [...(task.attachments || []), newAttachment],
-      })
-    );
-    // Reset the file input so the same file can be re-selected
     e.target.value = "";
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      await dispatch(uploadTaskAttachmentAsync({ id: task.id || task._id, file })).unwrap();
+      toast.success("File attached.");
+      onSuccess?.();
+    } catch (err) {
+      toast.error(err || "Failed to attach file.");
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   return (
@@ -220,8 +217,8 @@ export default function EmployeeTaskUpdate({ task, onCancel, onSuccess }) {
       <div className="border-t border-slate-100 dark:border-white/5 pt-4">
         <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/20 px-4 py-4 text-sm text-slate-500 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400 dark:hover:text-indigo-400 transition">
           <Paperclip className="h-4 w-4 shrink-0" />
-          Click to attach a file
-          <input type="file" className="sr-only" onChange={uploadAttachment} />
+          {uploadingFile ? "Uploading file..." : "Click to attach a file"}
+          <input type="file" className="sr-only" onChange={uploadAttachment} disabled={uploadingFile} />
         </label>
         {task?.attachments?.length > 0 && (
           <p className="mt-1.5 text-xs text-slate-400 text-center">

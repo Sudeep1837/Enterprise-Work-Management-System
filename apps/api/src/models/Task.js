@@ -18,8 +18,13 @@ const taskSchema = new mongoose.Schema(
       id: { type: String },
       name: { type: String },
       url: { type: String },
+      downloadUrl: { type: String },
+      publicId: { type: String },
+      resourceType: { type: String },
       type: { type: String },
       size: { type: Number },
+      uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      uploadedByName: { type: String },
       uploadedAt: { type: Date, default: Date.now }
     }],
     commentsCount: { type: Number, default: 0 },

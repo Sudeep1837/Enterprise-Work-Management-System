@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
-import { updateTaskAsync, addTaskCommentAsync } from "../../../store/workSlice";
+import { toast } from "react-toastify";
+import { addTaskCommentAsync, removeTaskAttachmentAsync, uploadTaskAttachmentAsync } from "../../../store/workSlice";
 import { Badge, Button } from "../../common/components/UI";
 import apiClient from "../../../services/apiClient";
+import { canUpdateTask } from "../../../lib/permissions";
 import {
   X, Paperclip, MessageSquare, Send, User, Calendar,
   FolderKanban, AlertTriangle, Tag, Clock, CheckCircle2,
-  ChevronRight,
+  Download, ExternalLink, Trash2, FileText, Image, FileArchive, Loader2,
 } from "lucide-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -68,14 +70,30 @@ function MentionText({ text }) {
   ));
 }
 
+function formatFileSize(size) {
+  if (!size) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAttachmentIcon(type = "") {
+  if (type.startsWith("image/")) return Image;
+  if (type.includes("zip") || type.includes("compressed")) return FileArchive;
+  return FileText;
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
   const dispatch = useDispatch();
   const user     = useSelector((state) => state.auth.user);
   const activity = useSelector((state) => state.work.activity || []);
+  const projects = useSelector((state) => state.work.projects || []);
   const [details, setDetails] = useState(null);
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [removingAttachmentId, setRemovingAttachmentId] = useState("");
   const [activeTab, setActiveTab] = useState("details"); // "details" | "comments" | "attachments"
 
   useEffect(() => {
@@ -101,6 +119,11 @@ export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
   const activeTask = details || initialTask;
   const task = activeTask;
   const taskId = activeTask?.id || activeTask?._id;
+  const taskProject = useMemo(() => {
+    const projectId = activeTask?.projectId?._id || activeTask?.projectId;
+    return projects.find((project) => (project.id || project._id)?.toString() === projectId?.toString()) || null;
+  }, [activeTask, projects]);
+  const canManageAttachments = canUpdateTask(user, activeTask, taskProject);
   const taskHistory = useMemo(() => {
     if (!taskId) return [];
     return activity
@@ -108,17 +131,59 @@ export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
       .slice(0, 6);
   }, [activity, taskId]);
 
-  const uploadAttachment = (e) => {
+  const uploadAttachment = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const newAttachment = {
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-    };
-    dispatch(updateTaskAsync({ id: taskId, attachments: [...(activeTask.attachments || []), newAttachment] }));
+    e.target.value = "";
+    if (!file || !taskId) return;
+    setUploadingAttachment(true);
+    try {
+      const updatedTask = await dispatch(uploadTaskAttachmentAsync({ id: taskId, file })).unwrap();
+      setDetails((current) => ({ ...(current || activeTask), ...updatedTask }));
+      toast.success("File attached successfully.");
+    } catch (error) {
+      toast.error(error || "Failed to attach file.");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const openAttachment = (attachment) => {
+    if (!attachment?.url) {
+      toast.error("This attachment does not have a file URL.");
+      return;
+    }
+    window.open(attachment.url, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadAttachment = (attachment) => {
+    const url = attachment?.downloadUrl || attachment?.url;
+    if (!url) {
+      toast.error("This attachment does not have a download URL.");
+      return;
+    }
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = attachment.name || "attachment";
+    anchor.rel = "noopener noreferrer";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const removeAttachment = async (attachment) => {
+    if (!attachment?.id || !taskId) return;
+    setRemovingAttachmentId(attachment.id);
+    try {
+      const updatedTask = await dispatch(
+        removeTaskAttachmentAsync({ id: taskId, attachmentId: attachment.id })
+      ).unwrap();
+      setDetails((current) => ({ ...(current || activeTask), ...updatedTask }));
+      toast.success("Attachment removed.");
+    } catch (error) {
+      toast.error(error || "Failed to remove attachment.");
+    } finally {
+      setRemovingAttachmentId("");
+    }
   };
 
   const handleSendComment = async () => {
@@ -340,35 +405,101 @@ export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
               {activeTab === "attachments" && (
                 <div className="px-5 py-4 space-y-4">
                   {/* Upload */}
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/20 px-4 py-6 text-sm text-slate-500 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400 dark:hover:text-indigo-400 transition">
-                    <Paperclip className="h-4 w-4" />
-                    Click to attach a file
-                    <input type="file" className="sr-only" onChange={uploadAttachment} />
-                  </label>
+                  {canManageAttachments && (
+                    <label className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-sm transition ${
+                      uploadingAttachment
+                        ? "cursor-wait border-indigo-300 bg-indigo-50 text-indigo-600 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300"
+                        : "cursor-pointer border-slate-300 text-slate-500 hover:border-indigo-500 hover:text-indigo-600 dark:border-white/20 dark:hover:border-indigo-400 dark:hover:text-indigo-400"
+                    }`}>
+                      {uploadingAttachment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                      {uploadingAttachment ? "Uploading file..." : "Click to attach a file"}
+                      <input type="file" className="sr-only" onChange={uploadAttachment} disabled={uploadingAttachment} />
+                    </label>
+                  )}
 
                   {/* File list */}
                   {!task.attachments?.length ? (
                     <div className="flex flex-col items-center justify-center py-10 text-center">
                       <Paperclip className="h-8 w-8 text-slate-300 dark:text-slate-700 mb-3" />
                       <p className="text-sm font-medium text-slate-500">No attachments yet</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {canManageAttachments ? "Upload reference files, specs, or evidence here." : "No files have been shared on this task."}
+                      </p>
                     </div>
                   ) : (
                     <ul className="space-y-2">
-                      {task.attachments.map((att) => (
+                      {task.attachments.map((att) => {
+                        const AttachmentIcon = getAttachmentIcon(att.type);
+                        const removing = removingAttachmentId === att.id;
+                        return (
                         <li
                           key={att.id}
-                          className="flex items-center gap-3 rounded-xl border border-slate-200/60 dark:border-white/10 bg-slate-50 dark:bg-slate-800/30 px-4 py-3"
+                          className="group rounded-xl border border-slate-200/60 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-white dark:border-white/10 dark:bg-slate-800/30 dark:hover:border-indigo-500/30 dark:hover:bg-slate-800/60"
                         >
-                          <Paperclip className="h-4 w-4 shrink-0 text-slate-400" />
-                          <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => openAttachment(att)}
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-500 ring-1 ring-slate-200 transition hover:bg-indigo-50 dark:bg-slate-900 dark:ring-white/10 dark:hover:bg-indigo-500/10"
+                              title="Open file"
+                            >
+                              <AttachmentIcon className="h-5 w-5" />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <button
+                                type="button"
+                                onClick={() => openAttachment(att)}
+                                className="block max-w-full truncate text-left text-sm font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300"
+                                title="Open file"
+                              >
+                                {att.name}
+                              </button>
+                              <p className="mt-0.5 text-xs text-slate-400">
+                                {[formatFileSize(att.size), att.type || "file", att.uploadedByName ? `by ${att.uploadedByName}` : "", att.uploadedAt ? relativeTime(att.uploadedAt) : ""]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openAttachment(att)}
+                                disabled={!att.url}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-indigo-300"
+                                title="Open"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => downloadAttachment(att)}
+                                disabled={!att.url && !att.downloadUrl}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-emerald-600 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-emerald-300"
+                                title="Download"
+                              >
+                                <Download className="h-4 w-4" />
+                              </button>
+                              {canManageAttachments && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeAttachment(att)}
+                                  disabled={removing}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                                  title="Remove"
+                                >
+                                  {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="hidden">
                             <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{att.name}</p>
                             <p className="text-xs text-slate-400">
                               {att.size ? `${Math.ceil(att.size / 1024)} KB` : ""}{att.uploadedAt ? ` · ${relativeTime(att.uploadedAt)}` : ""}
                             </p>
                           </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
                         </li>
-                      ))}
+                      )})}
                     </ul>
                   )}
                 </div>

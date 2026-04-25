@@ -72,6 +72,32 @@ export const updateTaskAsync = createAsyncThunk("work/updateTask", async ({ id, 
   return response.data;
 });
 
+export const uploadTaskAttachmentAsync = createAsyncThunk(
+  "work/uploadTaskAttachment",
+  async ({ id, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await apiClient.post(`/tasks/${id}/attachments`, formData);
+      return response.data.task;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message || "Failed to upload attachment");
+    }
+  }
+);
+
+export const removeTaskAttachmentAsync = createAsyncThunk(
+  "work/removeTaskAttachment",
+  async ({ id, attachmentId }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.delete(`/tasks/${id}/attachments/${attachmentId}`);
+      return response.data.task;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message || "Failed to remove attachment");
+    }
+  }
+);
+
 export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ id, status }) => {
   const response = await apiClient.put(`/tasks/${id}/status`, { status });
   return response.data;
@@ -341,6 +367,14 @@ const workSlice = createSlice({
       })
       .addCase(updateTaskAsync.fulfilled, (state, action) => {
         const index = state.tasks.findIndex((t) => t.id === action.payload.id);
+        if (index !== -1) state.tasks[index] = action.payload;
+      })
+      .addCase(uploadTaskAttachmentAsync.fulfilled, (state, action) => {
+        const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === action.payload.id);
+        if (index !== -1) state.tasks[index] = action.payload;
+      })
+      .addCase(removeTaskAttachmentAsync.fulfilled, (state, action) => {
+        const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === action.payload.id);
         if (index !== -1) state.tasks[index] = action.payload;
       })
       .addCase(moveTaskStatus.fulfilled, (state, action) => {

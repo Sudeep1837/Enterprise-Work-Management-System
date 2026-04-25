@@ -6,6 +6,11 @@ import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
 import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
+import {
+  deleteCloudinaryAsset,
+  getCloudinaryDownloadUrl,
+  uploadTaskAttachment,
+} from "../../services/cloudinaryService.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,6 +69,22 @@ function taskActivityAudience(task, project, actorId) {
     project?.ownerId,
     ...(project?.members || []),
   ]);
+}
+
+async function getEditableTask(req, res) {
+  const task = await Task.findById(req.params.id);
+  if (!task) {
+    res.status(404).json({ message: "Task not found" });
+    return {};
+  }
+
+  const project = task.projectId ? await Project.findById(task.projectId) : null;
+  if (!canUpdateTask(req.user, task, project)) {
+    res.status(403).json({ message: "You do not have permission to update this task." });
+    return {};
+  }
+
+  return { task, project };
 }
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -201,13 +222,17 @@ export const updateTask = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have permission to update this task." });
     }
 
+    if (req.body.attachments !== undefined) {
+      return res.status(400).json({ message: "Use the attachment upload/remove endpoints to manage files." });
+    }
+
     // Bug 2 fix: employee field whitelist — only status and attachments allowed
     if (isEmployee(req.user)) {
-      const EMPLOYEE_ALLOWED = new Set(["status", "attachments"]);
+      const EMPLOYEE_ALLOWED = new Set(["status"]);
       const blocked = Object.keys(req.body).filter((k) => !EMPLOYEE_ALLOWED.has(k));
       if (blocked.length > 0) {
         return res.status(403).json({
-          message: "Employees can only update status and attachments on their own assigned tasks.",
+          message: "Employees can only update status on their own assigned tasks. Use the file endpoints for attachments.",
         });
       }
     }
@@ -264,6 +289,92 @@ export const updateTask = async (req, res, next) => {
     }
 
     res.json(task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addAttachment = async (req, res, next) => {
+  try {
+    const { task, project } = await getEditableTask(req, res);
+    if (!task) return;
+    if (!req.file) return res.status(400).json({ message: "Choose a file to attach." });
+
+    const uploaded = await uploadTaskAttachment(req.file, task._id);
+    const resourceType = uploaded.resource_type || "auto";
+    const attachment = {
+      id: uploaded.asset_id || `${Date.now()}-${req.file.originalname}`,
+      name: req.file.originalname,
+      url: uploaded.secure_url,
+      downloadUrl: getCloudinaryDownloadUrl(uploaded.public_id, resourceType),
+      publicId: uploaded.public_id,
+      resourceType,
+      type: req.file.mimetype,
+      size: req.file.size,
+      uploadedBy: req.user.sub,
+      uploadedByName: req.user.name,
+      uploadedAt: new Date(),
+    };
+
+    task.attachments.push(attachment);
+    await task.save();
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Attachment Added",
+      entityType: "task",
+      entityId: task._id,
+      entityName: task.title,
+      visibleTo: taskActivityAudience(task, project, req.user.sub),
+      metadata: {
+        taskTitle: task.title,
+        fileName: attachment.name,
+        richText: `${req.user.name} attached "${attachment.name}" to "${task.title}"`,
+      },
+    });
+
+    emitToAll("task:updated", task.toJSON());
+    return res.status(201).json({ task: task.toJSON(), attachment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeAttachment = async (req, res, next) => {
+  try {
+    const { task, project } = await getEditableTask(req, res);
+    if (!task) return;
+
+    const attachment = task.attachments.find((item) => item.id === req.params.attachmentId);
+    if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+
+    task.attachments = task.attachments.filter((item) => item.id !== req.params.attachmentId);
+    await task.save();
+
+    if (attachment.publicId) {
+      deleteCloudinaryAsset(attachment.publicId, attachment.resourceType || "auto").catch((error) => {
+        console.warn(`Failed to delete attachment ${attachment.publicId}: ${error.message}`);
+      });
+    }
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Attachment Removed",
+      entityType: "task",
+      entityId: task._id,
+      entityName: task.title,
+      visibleTo: taskActivityAudience(task, project, req.user.sub),
+      metadata: {
+        taskTitle: task.title,
+        fileName: attachment.name,
+        richText: `${req.user.name} removed "${attachment.name}" from "${task.title}"`,
+      },
+    });
+
+    emitToAll("task:updated", task.toJSON());
+    return res.json({ task: task.toJSON(), removedAttachmentId: req.params.attachmentId });
   } catch (error) {
     next(error);
   }

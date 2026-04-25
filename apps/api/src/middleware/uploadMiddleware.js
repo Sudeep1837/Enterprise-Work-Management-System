@@ -14,3 +14,10 @@ export const profileImageUpload = multer({
     return cb(null, true);
   },
 });
+
+export const taskAttachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+});

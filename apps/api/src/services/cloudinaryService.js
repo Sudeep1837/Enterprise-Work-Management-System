@@ -29,7 +29,29 @@ export async function uploadProfileImage(file, userId) {
   });
 }
 
-export async function deleteCloudinaryAsset(publicId) {
+export async function uploadTaskAttachment(file, taskId) {
+  if (!file?.buffer) {
+    throw new Error("Attachment file is required.");
+  }
+
+  return uploadBuffer(file.buffer, {
+    folder: `ewms/task-attachments/${taskId}`,
+    resource_type: "auto",
+    use_filename: true,
+    unique_filename: true,
+  });
+}
+
+export function getCloudinaryDownloadUrl(publicId, resourceType = "auto") {
+  if (!publicId) return "";
+  return cloudinary.url(publicId, {
+    secure: true,
+    resource_type: resourceType,
+    flags: "attachment",
+  });
+}
+
+export async function deleteCloudinaryAsset(publicId, resourceType = "image") {
   if (!publicId) return;
-  await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 }
