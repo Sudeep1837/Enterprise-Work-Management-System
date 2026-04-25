@@ -1,11 +1,12 @@
 import { useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { PageHeader, Button } from "../common/components/UI";
 import Avatar from "../common/components/Avatar";
 import { fetchUsers } from "../../store/workSlice";
 import { removeProfileImageThunk, updateProfileImageThunk } from "../../store/authSlice";
-import { UserCircle, Mail, Briefcase, Calendar, Camera, Loader2, Trash2, Upload, UserCheck } from "lucide-react";
+import { UserCircle, Mail, Briefcase, Calendar, Camera, Loader2, Trash2, Upload, UserCheck, Pencil } from "lucide-react";
 
 function getManagerInfo(user) {
   const manager = user?.managerId;
@@ -14,6 +15,7 @@ function getManagerInfo(user) {
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const inputRef = useRef(null);
   const user = useSelector((state) => state.auth.user);
   const profile = useSelector((state) => state.work.profile || {});
@@ -113,8 +115,21 @@ export default function ProfilePage() {
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{displayName}</h2>
-          <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mt-1">{displayRole}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-bold text-slate-900 dark:text-white">{displayName}</h2>
+              <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mt-1">{displayRole}</p>
+              <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{displayEmail}</p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/settings?section=profile")}
+              className="shrink-0"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Profile
+            </Button>
+          </div>
           
           <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/10 grid gap-6 sm:grid-cols-2">
             <div className="flex items-center gap-3">

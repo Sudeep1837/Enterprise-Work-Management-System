@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import { setTheme } from "../../store/workSlice";
 import { changePasswordThunk, updateProfileThunk } from "../../store/authSlice";
 import { toast } from "react-toastify";
@@ -9,9 +11,34 @@ import { Settings, Moon, Sun } from "lucide-react";
 
 export default function SettingsPage() {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const profileSectionRef = useRef(null);
+  const [highlightProfile, setHighlightProfile] = useState(false);
   const theme = useSelector((state) => state.work.theme);
   const authUser = useSelector((state) => state.auth.user);
   const profile = useSelector((state) => state.work.profile || {});
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldFocusProfile =
+      params.get("section") === "profile" || location.hash === "#profile";
+
+    if (!shouldFocusProfile) return undefined;
+
+    const timer = setTimeout(() => {
+      profileSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const firstInput = profileSectionRef.current?.querySelector("input");
+      firstInput?.focus({ preventScroll: true });
+      setHighlightProfile(true);
+    }, 80);
+
+    const clearTimer = setTimeout(() => setHighlightProfile(false), 1800);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(clearTimer);
+    };
+  }, [location.hash, location.search]);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -57,7 +84,15 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div
+        id="profile"
+        ref={profileSectionRef}
+        className={`grid scroll-mt-24 gap-6 rounded-2xl transition-all duration-500 md:grid-cols-3 ${
+          highlightProfile
+            ? "bg-indigo-50/70 p-3 ring-2 ring-indigo-400/60 dark:bg-indigo-500/10 dark:ring-indigo-400/40"
+            : ""
+        }`}
+      >
         <div className="md:col-span-1">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">Profile Information</h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Update your account detail and email address.</p>
