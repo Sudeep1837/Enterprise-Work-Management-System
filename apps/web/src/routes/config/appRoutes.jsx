@@ -17,6 +17,7 @@ const ReportsPage = lazy(() => import("../../features/reports/ReportsPage"));
 const NotificationsPage = lazy(() => import("../../features/notifications/NotificationsPage"));
 const SettingsPage = lazy(() => import("../../features/settings/SettingsPage"));
 const ProfilePage = lazy(() => import("../../features/profile/ProfilePage"));
+const ActivityPage = lazy(() => import("../../features/activity/ActivityPage"));
 
 const withSuspense = (node) => <Suspense fallback={<div className="p-4">Loading...</div>}>{node}</Suspense>;
 
@@ -43,7 +44,8 @@ export const appRoutes = [
           { path: "/notifications", element: withSuspense(<NotificationsPage />) },
           { path: "/settings", element: withSuspense(<SettingsPage />) },
           { path: "/profile", element: withSuspense(<ProfilePage />) },
-          { element: <RoleGuard roles={["Admin", "Manager"]} />, children: [{ path: "/users", element: withSuspense(<UsersPage />) }] },
+          { path: "/activity", element: withSuspense(<ActivityPage />) },
+          { element: <RoleGuard roles={["admin", "manager"]} />, children: [{ path: "/users", element: withSuspense(<UsersPage />) }] },
         ],
       },
     ],

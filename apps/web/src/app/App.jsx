@@ -19,6 +19,8 @@ const router = createBrowserRouter(appRoutes);
 
 function App() {
   const token = useSelector((state) => state.auth.token);
+  const currentUser = useSelector((state) => state.auth.user);
+  const users = useSelector((state) => state.work.users);
   const theme = useSelector((state) => state.work.theme);
   const dispatch = useDispatch();
 
@@ -42,13 +44,13 @@ function App() {
     const socket = connectSocket(token);
     socket.on("project:created", ({ project }) => dispatch(socketProjectUpserted(project)));
     socket.on("project:updated", ({ project }) => dispatch(socketProjectUpserted(project)));
-    socket.on("project:deleted", ({ id }) => dispatch(socketProjectDeleted(id)));
+    socket.on("project:deleted", (payload) => dispatch(socketProjectDeleted(payload)));
     socket.on("task:created", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("task:updated", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("task:moved", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("comment:added", (comment) => dispatch(socketCommentAdded(comment)));
     // EC12: task:deleted was emitted by backend but never listened to — now handled
-    socket.on("task:deleted", (id) => dispatch(socketTaskDeleted(id)));
+    socket.on("task:deleted", (payload) => dispatch(socketTaskDeleted(payload)));
 
     socket.on("notification:created", (payload) => {
       dispatch(socketNotificationCreated(payload));
@@ -60,14 +62,32 @@ function App() {
     });
 
     socket.on("activity:created", (payload) => {
-      dispatch(socketActivityCreated(payload));
+      const currentUserId = currentUser?.id || currentUser?._id?.toString();
+      const visibleTo = payload.visibleTo || [];
+      const explicitlyScoped = visibleTo.length > 0;
+      const visibleToCurrentUser = visibleTo.some((id) => (id._id || id)?.toString() === currentUserId);
+      const actorId = (payload.actorId?._id || payload.actorId)?.toString();
+      const managerTeamUserIds = users
+        .filter((user) => (user.managerId?._id || user.managerId)?.toString() === currentUserId)
+        .map((user) => (user.id || user._id)?.toString());
+
+      const canSeeActivity =
+        currentUser?.role === "admin" ||
+        !explicitlyScoped ||
+        visibleToCurrentUser ||
+        actorId === currentUserId ||
+        (currentUser?.role === "manager" && managerTeamUserIds.includes(actorId));
+
+      if (canSeeActivity) {
+        dispatch(socketActivityCreated(payload));
+      }
     });
 
     // EC12: user:updated — sync role/team/active state across all sessions
     socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
     return () => disconnectSocket();
-  }, [dispatch, token]);
+  }, [currentUser, dispatch, token, users]);
 
   return (
     <>

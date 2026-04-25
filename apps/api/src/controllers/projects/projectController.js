@@ -2,6 +2,7 @@ import Project from "../../models/Project.js";
 import Task from "../../models/Task.js";
 import ActivityLog from "../../models/ActivityLog.js";
 import Notification from "../../models/Notification.js";
+import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
 import { isAdmin, isManager, isEmployee, canManageProject, canDeleteProject } from "../../utils/authUtils.js";
 
@@ -25,6 +26,17 @@ async function logActivity(payload) {
   } catch (err) {
     console.error("[logActivity] failed:", err.message);
   }
+}
+
+function uniqueObjectIds(ids = []) {
+  const seen = new Set();
+  return ids.filter((id) => {
+    if (!id) return false;
+    const value = id.toString();
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -217,13 +229,56 @@ export const deleteProject = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have permission to delete this project." });
     }
 
+    const projectTasks = await Task.find({ projectId: project._id }).select("_id title assigneeId reporterId");
+    const taskIds = projectTasks.map((task) => task._id.toString());
+    const visibleTo = uniqueObjectIds([
+      req.user.sub,
+      project.ownerId,
+      project.createdBy,
+      ...(project.members || []),
+      ...projectTasks.flatMap((task) => [task.assigneeId, task.reporterId]),
+    ]);
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Project Deleted",
+      entityType: "project",
+      entityId: project._id,
+      entityName: project.name,
+      visibleTo,
+      metadata: {
+        projectName: project.name,
+        removedTaskCount: projectTasks.length,
+        richText: `${req.user.name} deleted project "${project.name}"`,
+      },
+    });
+
+    if (projectTasks.length > 0) {
+      await logActivity({
+        actorId: req.user.sub,
+        actorName: req.user.name,
+        action: "Project Tasks Removed",
+        entityType: "task",
+        entityId: project._id,
+        entityName: project.name,
+        visibleTo,
+        metadata: {
+          projectName: project.name,
+          removedTaskCount: projectTasks.length,
+          taskTitles: projectTasks.map((task) => task.title),
+          richText: `${req.user.name} removed ${projectTasks.length} task${projectTasks.length === 1 ? "" : "s"} from project "${project.name}"`,
+        },
+      });
+    }
+
     await Project.findByIdAndDelete(req.params.id);
 
     // Cascade: remove all tasks belonging to deleted project
     await Task.deleteMany({ projectId: project._id });
 
-    emitToAll("project:deleted", { id: req.params.id });
-    res.json({ message: "Project deleted successfully" });
+    emitToAll("project:deleted", { id: req.params.id, taskIds });
+    res.json({ message: "Project deleted successfully", id: req.params.id, taskIds });
   } catch (error) {
     next(error);
   }

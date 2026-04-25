@@ -8,7 +8,7 @@ export function PageCard({ title, subtitle, actions, children, className = "" })
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
-      className={`relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-all hover:shadow-md dark:border-white/10 dark:bg-slate-900/50 ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-xl transition-all hover:shadow-md dark:border-white/5 dark:bg-slate-900/80 dark:hover:border-white/10 dark:hover:shadow-indigo-500/10 ${className}`}
     >
       {(title || actions) && (
         <div className="mb-6 flex items-center justify-between gap-4">
@@ -49,7 +49,7 @@ export function StatCard({ label, value, icon: Icon, trend }) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-white/10 dark:bg-slate-900/50"
+      className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm transition-all hover:shadow-md dark:border-white/5 dark:bg-slate-900/80 dark:hover:border-white/10 dark:hover:shadow-indigo-500/10"
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
@@ -85,7 +85,7 @@ export function Badge({ value, tone = "slate", className = "" }) {
 export function Button({ children, variant = "primary", className = "", ...props }) {
   const variants = {
     primary: "bg-slate-900 text-white shadow-sm hover:bg-slate-800 focus-visible:outline-slate-900 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:focus-visible:outline-white",
-    secondary: "bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:hover:bg-white/10",
+    secondary: "bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:hover:bg-white/10 dark:hover:ring-white/20",
     danger: "bg-red-600 text-white shadow-sm hover:bg-red-500 focus-visible:outline-red-600",
     ghost: "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10",
   };
@@ -103,7 +103,7 @@ export function Button({ children, variant = "primary", className = "", ...props
 // Interactive Table Shell
 export function TableShell({ children }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/50">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm backdrop-blur-xl dark:border-white/5 dark:bg-slate-900/80">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 dark:divide-white/10">
           {children}
@@ -115,7 +115,7 @@ export function TableShell({ children }) {
 
 export function EmptyState({ title, description, icon: Icon, action }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center dark:border-slate-700 dark:bg-slate-800/20">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center dark:border-slate-700 dark:bg-slate-900/50">
       {Icon && (
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
           <Icon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
@@ -134,7 +134,7 @@ export function ConfirmDialog({ open, title, message, onCancel, onConfirm }) {
       {open && (
         <motion.div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div
-            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10"
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-white/10"
             initial={{ opacity: 0, y: 16, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}

@@ -16,6 +16,7 @@ import {
   FolderKanban, CheckSquare, Target, Activity,
   CheckCircle2, AlertTriangle, Clock, Flame,
   TrendingDown, User, Zap, MessageSquare, ArrowRight, Radio,
+  Archive, Trash2,
 } from "lucide-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -317,7 +318,12 @@ export default function DashboardPage() {
                   let iconText = "text-slate-500";
 
                   const action = item.action || "";
-                  if (action === "Task Completed") {
+                  const normalizedAction = action.toLowerCase();
+                  if (normalizedAction.includes("deleted") || normalizedAction.includes("removed")) {
+                    Icon = Trash2; iconBg = "bg-red-100 dark:bg-red-500/20"; iconText = "text-red-600 dark:text-red-400";
+                  } else if (normalizedAction.includes("archived")) {
+                    Icon = Archive; iconBg = "bg-amber-100 dark:bg-amber-500/20"; iconText = "text-amber-600 dark:text-amber-400";
+                  } else if (action === "Task Completed") {
                     Icon = CheckCircle2; iconBg = "bg-emerald-100 dark:bg-emerald-500/20"; iconText = "text-emerald-600 dark:text-emerald-400";
                   } else if (action === "Task Moved") {
                     Icon = ArrowRight; iconBg = "bg-sky-100 dark:bg-sky-500/20"; iconText = "text-sky-600 dark:text-sky-400";

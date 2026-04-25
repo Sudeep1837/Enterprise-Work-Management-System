@@ -26,11 +26,11 @@ const signupSchema = yup.object({
 
 // ─── Shared style tokens ──────────────────────────────────────────────────────
 const inputClass =
-  "w-full rounded-xl border border-white/10 bg-slate-800/70 px-4 py-3 text-slate-100 caret-indigo-400 placeholder:text-slate-500 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800/70 px-4 py-3 text-slate-900 dark:text-slate-100 caret-indigo-500 dark:caret-indigo-400 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-50";
 const inputErrorClass =
-  "w-full rounded-xl border border-red-500/50 bg-slate-800/70 px-4 py-3 text-slate-100 caret-indigo-400 placeholder:text-slate-500 shadow-sm transition-all focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-50";
-const labelClass = "mb-1.5 block text-sm font-medium text-slate-300";
-const errorClass = "mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-400";
+  "w-full rounded-xl border border-red-500/50 bg-white dark:bg-slate-800/70 px-4 py-3 text-slate-900 dark:text-slate-100 caret-indigo-500 dark:caret-indigo-400 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm transition-all focus:border-red-500 dark:focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-50";
+const labelClass = "mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300";
+const errorClass = "mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-500 dark:text-red-400";
 
 // ─── Left branding panel ──────────────────────────────────────────────────────
 function BrandPanel() {
@@ -46,24 +46,24 @@ function BrandPanel() {
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
-      className="flex flex-col justify-between rounded-2xl border border-white/8 bg-slate-900/60 p-8 text-white backdrop-blur-xl"
+      className="flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-white/8 bg-white/60 dark:bg-slate-900/60 p-8 text-slate-900 dark:text-white backdrop-blur-xl shadow-xl dark:shadow-none"
     >
       {/* Brand */}
       <div>
         <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300 tracking-wide uppercase">
           <Zap className="h-3 w-3" /> Enterprise Grade
         </span>
-        <h2 className="mt-4 text-2xl font-bold leading-snug text-white">
+        <h2 className="mt-4 text-2xl font-bold leading-snug text-slate-900 dark:text-white">
           Plan smarter.<br />Execute faster.<br />Report confidently.
         </h2>
-        <p className="mt-3 text-sm text-slate-400 leading-relaxed">
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
           The collaborative workspace built for high-performing teams — role-aware, realtime, and analytics-first.
         </p>
 
         {/* Feature list */}
         <ul className="mt-6 space-y-3">
           {feats.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-start gap-3 text-sm text-slate-300">
+            <li key={text} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300">
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
               {text}
             </li>
@@ -71,18 +71,18 @@ function BrandPanel() {
         </ul>
 
         {/* Mini dashboard preview widget */}
-        <div className="mt-8 rounded-xl border border-white/8 bg-slate-800/50 p-4 space-y-3">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Live Workspace</p>
+        <div className="mt-8 rounded-xl border border-slate-200 dark:border-white/8 bg-white/50 dark:bg-slate-800/50 p-4 space-y-3 shadow-inner dark:shadow-none">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Live Workspace</p>
           {[
             { label: "Platform Rebuild", pct: 82, color: "bg-indigo-500" },
             { label: "Mobile App v2",   pct: 54, color: "bg-emerald-500" },
             { label: "API Gateway",     pct: 91, color: "bg-cyan-500" },
           ].map(({ label, pct, color }) => (
             <div key={label}>
-              <div className="flex justify-between text-xs text-slate-300 mb-1">
+              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300 mb-1">
                 <span>{label}</span><span>{pct}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-slate-700">
+              <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
                 <motion.div
                   className={`h-full rounded-full ${color}`}
                   initial={{ width: 0 }}
@@ -95,21 +95,6 @@ function BrandPanel() {
         </div>
       </div>
 
-      {/* Demo credentials */}
-      <div className="mt-8 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
-        <p className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Demo Credentials</p>
-        {[
-          ["admin@demo.com", "Admin@123"],
-          ["manager@demo.com", "Manager@123"],
-          ["employee@demo.com", "Employee@123"],
-        ].map(([email, pw]) => (
-          <p key={email} className="text-xs text-slate-400 leading-6">
-            <span className="text-slate-200">{email}</span>
-            <span className="mx-1.5 text-slate-600">/</span>
-            {pw}
-          </p>
-        ))}
-      </div>
     </motion.aside>
   );
 }
@@ -146,7 +131,7 @@ function PasswordInput({ label, error, show, onToggle, disabled, registration })
           type="button"
           onClick={onToggle}
           disabled={disabled}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 dark:text-slate-500 transition hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           aria-label={show ? "Hide password" : "Show password"}
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -197,7 +182,7 @@ function AuthForm({ mode }) {
   return (
     <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center overflow-hidden px-6 py-12">
       {/* Background */}
-      <div className="pointer-events-none absolute inset-0 bg-slate-950">
+      <div className="pointer-events-none absolute inset-0 transition-colors duration-200">
         <div className="absolute left-1/4 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-[120px]" />
         <div className="absolute right-1/4 bottom-0 h-[400px] w-[400px] translate-x-1/2 rounded-full bg-cyan-600/15 blur-[120px]" />
       </div>
@@ -210,13 +195,13 @@ function AuthForm({ mode }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.1 }}
-          className="rounded-2xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl backdrop-blur-2xl"
+          className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 p-8 shadow-2xl backdrop-blur-2xl"
         >
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               {isLogin ? "Welcome back" : "Create your account"}
             </h1>
-            <p className="mt-1.5 text-sm text-slate-400">
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
               {isLogin
                 ? "Sign in to continue to your workspace."
                 : "Start collaborating with your team in minutes."}
@@ -291,7 +276,7 @@ function AuthForm({ mode }) {
             </motion.button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-slate-500">
+          <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-500">
             {isLogin ? "No account yet?" : "Already have an account?"}{" "}
             <Link
               to={isLogin ? "/signup" : "/login"}

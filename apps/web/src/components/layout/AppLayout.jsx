@@ -25,7 +25,11 @@ import {
   AlertTriangle,
   Info,
   CheckCircle2,
+  Search,
+  Activity,
 } from "lucide-react";
+import ThemeToggle from "../common/ThemeToggle";
+import CommandPalette from "../../features/search/CommandPalette";
 
 const links = [
   { name: "dashboard", icon: LayoutDashboard },
@@ -35,6 +39,7 @@ const links = [
   // /users is restricted to admin + manager; employees are excluded from the nav
   { name: "users",     icon: Users,    roles: ["admin", "manager"] },
   { name: "reports",   icon: BarChart3 },
+  { name: "activity",  icon: Activity },
   { name: "notifications", icon: Bell },
   { name: "settings",  icon: Settings },
   { name: "profile",   icon: UserCircle },
@@ -177,10 +182,22 @@ function BellDropdown({ open, onClose }) {
 
   const handleNotifClick = (notif) => {
     if (!notif.read) {
-      dispatch(markNotificationReadAsync(notif.id));
+      dispatch(markNotificationReadAsync(notif.id || notif._id));
     }
     onClose();
-    navigate("/notifications");
+    
+    // Navigate to related entity
+    if (notif.relatedEntityType === "task") {
+      navigate("/tasks");
+    } else if (notif.relatedEntityType === "project") {
+      navigate("/projects");
+    } else if (notif.relatedEntityType === "user") {
+      navigate("/users");
+    } else if (notif.link) {
+      navigate(notif.link);
+    } else {
+      navigate("/notifications");
+    }
   };
 
   return (
@@ -192,7 +209,7 @@ function BellDropdown({ open, onClose }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: 0.97 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-50 overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-2xl ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-900"
+          className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-50 overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-2xl ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/10">
@@ -277,6 +294,8 @@ export default function AppLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const searchButtonRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -284,6 +303,7 @@ export default function AppLayout() {
   useEffect(() => {
     setSidebarOpen(false);
     setBellOpen(false);
+    setCommandOpen(false);
   }, [location.pathname]);
 
   return (
@@ -294,7 +314,7 @@ export default function AppLayout() {
         initial={{ x: -28, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="sticky top-0 z-40 hidden h-screen w-72 flex-col border-r border-slate-200/60 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/40 lg:flex"
+        className="sticky top-0 z-40 hidden h-screen w-72 flex-col border-r border-slate-200/60 bg-white/40 backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/60 lg:flex"
       >
         <SidebarContent onNavClick={() => { }} />
       </motion.aside>
@@ -320,7 +340,7 @@ export default function AppLayout() {
               animate={{ x: 0 }}
               exit={{ x: -288 }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200/60 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95 lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200/60 bg-white/95 backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/95 lg:hidden"
             >
               {/* Close button */}
               <button
@@ -343,14 +363,14 @@ export default function AppLayout() {
           initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 }}
-          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/60 bg-white/70 px-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/70 sm:px-6 lg:px-8"
+          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/60 bg-white/70 px-4 shadow-sm backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/80 sm:px-6 lg:px-8"
         >
           {/* Mobile: hamburger + logo */}
           <div className="flex items-center gap-3 lg:hidden">
             <button
               id="mobile-menu-toggle"
               aria-label="Open navigation menu"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-white/10"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/70 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
               onClick={() => setSidebarOpen((v) => !v)}
             >
               <Menu className="h-5 w-5" />
@@ -364,6 +384,25 @@ export default function AppLayout() {
           {/* Right actions */}
           <div className="flex flex-1 items-center justify-end gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+
+              {/* Search Toggle */}
+              <div className="hidden sm:block">
+                <button
+                  ref={searchButtonRef}
+                  onClick={() => setCommandOpen(true)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-label="Search"
+                  aria-expanded={commandOpen}
+                  title="Search (Ctrl+K)"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Theme Toggle */}
+              <div className="hidden sm:block">
+                <ThemeToggle />
+              </div>
 
               {/* Bell */}
               <div className="relative">
@@ -422,6 +461,12 @@ export default function AppLayout() {
           </AnimatePresence>
         </main>
       </div>
+      <CommandPalette
+        open={commandOpen}
+        onOpen={() => setCommandOpen(true)}
+        onClose={() => setCommandOpen(false)}
+        restoreFocusRef={searchButtonRef}
+      />
     </div>
   );
 }

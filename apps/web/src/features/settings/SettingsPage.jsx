@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { PageCard, PageHeader, Button } from "../common/components/UI";
 import ProfileForm from "./components/ProfileForm";
 import PasswordForm from "./components/PasswordForm";
-import { Settings, Moon, Sun, Monitor } from "lucide-react";
+import { Settings, Moon, Sun } from "lucide-react";
 
 export default function SettingsPage() {
   const dispatch = useDispatch();
@@ -30,27 +30,20 @@ export default function SettingsPage() {
           <PageCard>
             <div className="flex flex-col gap-4">
               <p className="text-sm font-medium text-slate-900 dark:text-white">Theme Preference</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => dispatch(setTheme("light"))}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-all ${theme === "light" ? "border-indigo-500 bg-indigo-50/50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-300 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700/50"}`}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-all ${theme === "light" ? "border-indigo-500 bg-indigo-50/50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-300 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-800/80"}`}
                 >
                   <Sun className="h-6 w-6 mb-1" />
                   <span className="text-sm font-medium">Light</span>
                 </button>
                 <button 
                   onClick={() => dispatch(setTheme("dark"))}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-all ${theme === "dark" ? "border-indigo-500 bg-indigo-50/50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-300 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700/50"}`}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-all ${theme === "dark" ? "border-indigo-500 bg-indigo-50/50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-300 ring-1 ring-indigo-500" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-800/80"}`}
                 >
                   <Moon className="h-6 w-6 mb-1" />
                   <span className="text-sm font-medium">Dark</span>
-                </button>
-                <button 
-                  disabled
-                  className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-400 opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed"
-                >
-                  <Monitor className="h-6 w-6 mb-1" />
-                  <span className="text-sm font-medium">System</span>
                 </button>
               </div>
             </div>

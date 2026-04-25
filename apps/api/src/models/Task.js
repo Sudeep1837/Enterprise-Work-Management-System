@@ -23,6 +23,9 @@ const taskSchema = new mongoose.Schema(
       uploadedAt: { type: Date, default: Date.now }
     }],
     commentsCount: { type: Number, default: 0 },
+    archived: { type: Boolean, default: false },
+    archivedAt: { type: Date },
+    archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: true,

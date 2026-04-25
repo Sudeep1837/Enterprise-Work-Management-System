@@ -25,8 +25,8 @@ export const updateProject = createAsyncThunk("work/updateProject", async ({ id,
 });
 
 export const deleteProjectAsync = createAsyncThunk("work/deleteProject", async (id) => {
-  await apiClient.delete(`/projects/${id}`);
-  return id;
+  const response = await apiClient.delete(`/projects/${id}`);
+  return response.data || { id };
 });
 
 export const fetchTasks = createAsyncThunk("work/fetchTasks", async () => {
@@ -55,8 +55,18 @@ export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ i
 });
 
 export const deleteTaskAsync = createAsyncThunk("work/deleteTask", async (id) => {
-  await apiClient.delete(`/tasks/${id}`);
-  return id;
+  const response = await apiClient.delete(`/tasks/${id}`);
+  return response.data || { id };
+});
+
+export const bulkUpdateTasksAsync = createAsyncThunk("work/bulkUpdateTasks", async (payload, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.patch("/tasks/bulk", payload);
+    return response.data;
+  } catch (err) {
+    const message = err.response?.data?.message || err.message || "Failed to update selected tasks";
+    return rejectWithValue(message);
+  }
 });
 
 export const addTaskCommentAsync = createAsyncThunk("work/addTaskComment", async ({ id, content }) => {
@@ -142,7 +152,16 @@ const workSlice = createSlice({
       }
     },
     socketProjectDeleted: (state, action) => {
-      state.projects = state.projects.filter((p) => (p.id || p._id?.toString()) !== action.payload);
+      const payload = action.payload || {};
+      const projectId = typeof payload === "string" ? payload : payload.id;
+      const taskIds = typeof payload === "string" ? [] : payload.taskIds || [];
+      const taskIdSet = new Set(taskIds.map((id) => id?.toString()));
+      state.projects = state.projects.filter((p) => (p.id || p._id?.toString()) !== projectId);
+      if (taskIdSet.size > 0) {
+        state.tasks = state.tasks.filter((t) => !taskIdSet.has((t.id || t._id?.toString())?.toString()));
+      } else {
+        state.tasks = state.tasks.filter((t) => (t.projectId?._id || t.projectId)?.toString() !== projectId);
+      }
     },
     socketTaskUpserted: (state, action) => {
       const tid = action.payload.id || action.payload._id?.toString();
@@ -154,7 +173,9 @@ const workSlice = createSlice({
       }
     },
     socketTaskDeleted: (state, action) => {
-      state.tasks = state.tasks.filter((t) => (t.id || t._id?.toString()) !== action.payload);
+      const payload = action.payload || {};
+      const taskId = typeof payload === "string" ? payload : payload.id;
+      state.tasks = state.tasks.filter((t) => (t.id || t._id?.toString()) !== taskId);
     },
     socketCommentAdded: (state, action) => {
       const tid = action.payload.taskId?.toString();
@@ -224,7 +245,16 @@ const workSlice = createSlice({
         if (index !== -1) state.projects[index] = action.payload;
       })
       .addCase(deleteProjectAsync.fulfilled, (state, action) => {
-        state.projects = state.projects.filter((p) => p.id !== action.payload);
+        const payload = action.payload || {};
+        const projectId = typeof payload === "string" ? payload : payload.id;
+        const taskIds = typeof payload === "string" ? [] : payload.taskIds || [];
+        const taskIdSet = new Set(taskIds.map((id) => id?.toString()));
+        state.projects = state.projects.filter((p) => (p.id || p._id?.toString()) !== projectId);
+        if (taskIdSet.size > 0) {
+          state.tasks = state.tasks.filter((t) => !taskIdSet.has((t.id || t._id?.toString())?.toString()));
+        } else {
+          state.tasks = state.tasks.filter((t) => (t.projectId?._id || t.projectId)?.toString() !== projectId);
+        }
       })
       // Tasks
       .addCase(fetchTasks.fulfilled, (state, action) => {
@@ -250,7 +280,22 @@ const workSlice = createSlice({
         if (task) Object.assign(task, action.payload);
       })
       .addCase(deleteTaskAsync.fulfilled, (state, action) => {
-        state.tasks = state.tasks.filter((t) => t.id !== action.payload);
+        const payload = action.payload || {};
+        const taskId = typeof payload === "string" ? payload : payload.id;
+        state.tasks = state.tasks.filter((t) => (t.id || t._id?.toString()) !== taskId);
+      })
+      .addCase(bulkUpdateTasksAsync.fulfilled, (state, action) => {
+        action.payload.forEach((updatedTask) => {
+          const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === updatedTask.id);
+          if (updatedTask.archived) {
+            if (index !== -1) state.tasks.splice(index, 1);
+            return;
+          }
+          if (index !== -1) state.tasks[index] = updatedTask;
+        });
+      })
+      .addCase(bulkUpdateTasksAsync.rejected, (_state, action) => {
+        toast.error(action.payload || "Bulk update failed");
       })
       // Comments
       .addCase(addTaskCommentAsync.fulfilled, (state, action) => {

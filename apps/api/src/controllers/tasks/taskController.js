@@ -5,7 +5,7 @@ import Notification from "../../models/Notification.js";
 import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canEditUser, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
+import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,17 +40,44 @@ async function logActivity(payload) {
   }
 }
 
+function extractMentions(content = "") {
+  const matches = content.match(/@([a-zA-Z][a-zA-Z0-9._-]{1,40})/g) || [];
+  return [...new Set(matches.map((match) => match.slice(1).trim().toLowerCase()))];
+}
+
+function uniqueObjectIds(ids = []) {
+  const seen = new Set();
+  return ids.filter((id) => {
+    if (!id) return false;
+    const value = id.toString();
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function taskActivityAudience(task, project, actorId) {
+  return uniqueObjectIds([
+    actorId,
+    task.assigneeId,
+    task.reporterId,
+    project?.ownerId,
+    ...(project?.members || []),
+  ]);
+}
+
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
 export const getTasks = async (req, res, next) => {
   try {
-    let query = {};
+    let query = { archived: req.query.archived === "true" };
 
     if (isManager(req.user)) {
       // Manager sees: tasks in their owned projects + tasks they reported or are assigned
       const ownedProjects = await Project.find({ ownerId: req.user.sub }).select("_id");
       const ownedProjectIds = ownedProjects.map((p) => p._id);
       query = {
+        archived: req.query.archived === "true",
         $or: [
           { projectId: { $in: ownedProjectIds } },
           { reporterId: req.user.sub },
@@ -59,7 +86,7 @@ export const getTasks = async (req, res, next) => {
       };
     } else if (isEmployee(req.user)) {
       // Employee sees only tasks assigned to them
-      query = { assigneeId: req.user.sub };
+      query = { archived: req.query.archived === "true", assigneeId: req.user.sub };
     }
     // Admin: query = {} → all tasks
 
@@ -75,6 +102,10 @@ export const getTaskById = async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
+    const project = task.projectId ? await Project.findById(task.projectId) : null;
+    if (!canViewTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to view this task." });
+    }
     const comments = await Comment.find({ taskId: task._id }).sort({ createdAt: -1 });
     res.json({ ...task.toJSON(), comments });
   } catch (error) {
@@ -250,10 +281,114 @@ export const deleteTask = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have permission to delete this task." });
     }
 
-    await Task.findByIdAndDelete(req.params.id);
-    await Comment.deleteMany({ taskId: req.params.id });
-    emitToAll("task:deleted", req.params.id);
-    res.json({ message: "Task deleted successfully" });
+    const archivedTask = await Task.findByIdAndUpdate(req.params.id, {
+      archived: true,
+      archivedAt: new Date(),
+      archivedBy: req.user.sub,
+    }, { new: true });
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: "Task Archived",
+      entityType: "task",
+      entityId: task._id,
+      entityName: task.title,
+      visibleTo: taskActivityAudience(task, project, req.user.sub),
+      metadata: {
+        taskTitle: task.title,
+        projectName: task.projectName || project?.name || "",
+        richText: `${req.user.name} archived task "${task.title}"`,
+      },
+    });
+    emitToAll("task:deleted", {
+      id: req.params.id,
+      task: archivedTask.toJSON(),
+      archived: true,
+      projectId: task.projectId?.toString(),
+    });
+    res.json({ message: "Task archived successfully", id: req.params.id });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkUpdateTasks = async (req, res, next) => {
+  try {
+    const { ids = [], status, assigneeId, assigneeName, archived } = req.body;
+    const taskIds = [...new Set(ids)].filter(Boolean);
+    if (!taskIds.length) return res.status(400).json({ message: "Select at least one task." });
+
+    const tasks = await Task.find({ _id: { $in: taskIds } });
+    if (!tasks.length) return res.status(404).json({ message: "No matching tasks found." });
+
+    const updates = {};
+    if (status) updates.status = status;
+    if (assigneeId !== undefined) {
+      updates.assigneeId = assigneeId || null;
+      updates.assigneeName = assigneeName || "";
+    }
+    if (archived === true) {
+      updates.archived = true;
+      updates.archivedAt = new Date();
+      updates.archivedBy = req.user.sub;
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ message: "No bulk update action was provided." });
+    }
+
+    const allowedTasks = [];
+    for (const task of tasks) {
+      const project = task.projectId ? await Project.findById(task.projectId) : null;
+      const requiresDelete = archived === true;
+      const allowed = requiresDelete
+        ? canDeleteTask(req.user, task, project)
+        : canUpdateTask(req.user, task, project);
+      if (!allowed) continue;
+
+      if (assigneeId !== undefined && assigneeId) {
+        const targetUser = await User.findById(assigneeId);
+        if (!targetUser || !canAssignTaskToUser(req.user, targetUser, project)) continue;
+      }
+      allowedTasks.push(task);
+    }
+
+    if (!allowedTasks.length) {
+      return res.status(403).json({ message: "You do not have permission to update the selected tasks." });
+    }
+
+    const allowedIds = allowedTasks.map((task) => task._id);
+    await Task.updateMany({ _id: { $in: allowedIds } }, { $set: updates });
+    const updated = await Task.find({ _id: { $in: allowedIds } }).sort({ updatedAt: -1 });
+
+    await logActivity({
+      actorId: req.user.sub,
+      actorName: req.user.name,
+      action: archived === true ? "Tasks Archived" : "Tasks Bulk Updated",
+      entityType: "task",
+      entityName: `${updated.length} tasks`,
+      visibleTo: uniqueObjectIds([
+        req.user.sub,
+        ...allowedTasks.flatMap((task) => [task.assigneeId, task.reporterId]),
+      ]),
+      metadata: {
+        count: updated.length,
+        status,
+        assigneeName,
+        richText: `${req.user.name} ${archived === true ? "archived" : "bulk updated"} ${updated.length} task${updated.length === 1 ? "" : "s"}`,
+      },
+    });
+
+    updated.forEach((task) => {
+      emitToAll(
+        archived === true ? "task:deleted" : "task:updated",
+        archived === true
+          ? { id: task.id, task: task.toJSON(), archived: true, projectId: task.projectId?.toString() }
+          : task.toJSON()
+      );
+    });
+
+    res.json(updated.map((task) => task.toJSON()));
   } catch (error) {
     next(error);
   }
@@ -369,6 +504,27 @@ export const addComment = async (req, res, next) => {
           action: "commented on",
           entityName: task.title,
         });
+      }
+
+      const mentionNames = extractMentions(content);
+      if (mentionNames.length) {
+        const mentionedUsers = await User.find({
+          _id: { $ne: req.user.sub },
+          $or: mentionNames.map((name) => ({ name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`, "i") })),
+        }).limit(10);
+
+        for (const mentionedUser of mentionedUsers) {
+          await createAndEmitNotification(mentionedUser._id, {
+            title: "You were mentioned",
+            message: `${req.user.name} mentioned you on "${task.title}"`,
+            type: "mention",
+            relatedEntityType: "comment",
+            relatedEntityId: task._id,
+            actorName: req.user.name,
+            action: "mentioned you on",
+            entityName: task.title,
+          });
+        }
       }
     }
 

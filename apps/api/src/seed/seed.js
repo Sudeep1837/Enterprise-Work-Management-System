@@ -8,33 +8,29 @@ import Comment from "../models/Comment.js";
 import Notification from "../models/Notification.js";
 import ActivityLog from "../models/ActivityLog.js";
 
-/**
- * Seed script — builds a clear 5-user hierarchy for testing all RBAC rules:
- *
- * Admin:
- *   admin@demo.com / Admin@123
- *
- * Managers:
- *   kunal@demo.com / Manager@123  → team: Engineering
- *   priya@demo.com / Manager@123  → team: Design
- *
- * Employees:
- *   jane@demo.com  / Employee@123 → team: Engineering, manager: Kunal
- *   alex@demo.com  / Employee@123 → team: Engineering, manager: Kunal
- *   raj@demo.com   / Employee@123 → team: Design,      manager: Priya
- *
- * Projects:
- *   "Platform Relaunch"  → owned by Kunal (Engineering)
- *   "Brand Identity"     → owned by Priya  (Design)
- *
- * Verification cases covered:
- *   ✓ same-team assignment (Kunal → Jane, Alex)
- *   ✓ cross-team restriction (Kunal cannot assign to Raj unless project member)
- *   ✓ employee self-assignment only
- *   ✓ admin cross-team assignment
- *   ✓ Reports To column displays correctly for all employees
- *   ✓ legacy graceful: admin has no managerId
- */
+const credentials = {
+  admin: "Admin@123",
+  manager: "Manager@123",
+  employee: "Employee@123",
+};
+
+const dates = {
+  past: (day) => new Date(`2026-04-${String(day).padStart(2, "0")}T09:00:00.000Z`),
+  may: (day) => new Date(`2026-05-${String(day).padStart(2, "0")}T09:00:00.000Z`),
+  june: (day) => new Date(`2026-06-${String(day).padStart(2, "0")}T09:00:00.000Z`),
+  july: (day) => new Date(`2026-07-${String(day).padStart(2, "0")}T09:00:00.000Z`),
+};
+
+const clearDatabase = () =>
+  Promise.all([
+    User.deleteMany({}),
+    Project.deleteMany({}),
+    Task.deleteMany({}),
+    Comment.deleteMany({}),
+    Notification.deleteMany({}),
+    ActivityLog.deleteMany({}),
+  ]);
+
 const runSeed = async () => {
   try {
     console.log("Connecting to MongoDB...");
@@ -42,253 +38,492 @@ const runSeed = async () => {
     console.log("Connected.");
 
     console.log("Clearing existing data...");
-    await Promise.all([
-      User.deleteMany({}),
-      Project.deleteMany({}),
-      Task.deleteMany({}),
-      Comment.deleteMany({}),
-      Notification.deleteMany({}),
-      ActivityLog.deleteMany({}),
-    ]);
+    await clearDatabase();
 
     const salt = await bcrypt.genSalt(10);
-    const adminHash    = await bcrypt.hash("Admin@123",    salt);
-    const managerHash  = await bcrypt.hash("Manager@123",  salt);
-    const employeeHash = await bcrypt.hash("Employee@123", salt);
+    const passwordHashes = {
+      admin: await bcrypt.hash(credentials.admin, salt),
+      manager: await bcrypt.hash(credentials.manager, salt),
+      employee: await bcrypt.hash(credentials.employee, salt),
+    };
 
-    // ── 1. Admin ─────────────────────────────────────────────────────────────
+    const createUser = (user) =>
+      User.create({
+        ...user,
+        passwordHash: passwordHashes[user.role],
+        active: true,
+        status: user.status || "offline",
+      });
+
     console.log("Creating users...");
-    const admin = await User.create({
-      name: "Admin User",
+    const admin = await createUser({
+      name: "Olivia Chen",
       email: "admin@demo.com",
-      passwordHash: adminHash,
       role: "admin",
-      team: "",        // admin has no required team
+      team: "",
       managerId: null,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=admin",
+      status: "online",
+      avatar: "https://i.pravatar.cc/150?u=olivia.chen",
     });
 
-    // ── 2. Managers ──────────────────────────────────────────────────────────
-    const kunal = await User.create({
-      name: "Manager Kunal",
-      email: "kunal@demo.com",
-      passwordHash: managerHash,
+    const manager1 = await createUser({
+      name: "Kunal Shah",
+      email: "kunal.manager@demo.com",
       role: "manager",
       team: "Engineering",
       managerId: null,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=kunal",
+      status: "busy",
+      avatar: "https://i.pravatar.cc/150?u=kunal.shah",
     });
 
-    const priya = await User.create({
-      name: "Manager Priya",
-      email: "priya@demo.com",
-      passwordHash: managerHash,
+    const manager2 = await createUser({
+      name: "Priya Nair",
+      email: "priya.manager@demo.com",
       role: "manager",
       team: "Design",
       managerId: null,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=priya",
+      status: "online",
+      avatar: "https://i.pravatar.cc/150?u=priya.nair",
     });
 
-    // ── 3. Employees ─────────────────────────────────────────────────────────
-    // Jane: Engineering → reports to Kunal
-    const jane = await User.create({
-      name: "Employee Jane",
-      email: "jane@demo.com",
-      passwordHash: employeeHash,
+    const employee1 = await createUser({
+      name: "Maya Patel",
+      email: "maya.employee@demo.com",
       role: "employee",
       team: "Engineering",
-      managerId: kunal._id,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=jane",
+      managerId: manager1._id,
+      status: "online",
+      avatar: "https://i.pravatar.cc/150?u=maya.patel",
     });
 
-    // Alex: Engineering → reports to Kunal
-    const alex = await User.create({
-      name: "Employee Alex",
-      email: "alex@demo.com",
-      passwordHash: employeeHash,
+    const employee2 = await createUser({
+      name: "Ethan Brooks",
+      email: "ethan.employee@demo.com",
       role: "employee",
       team: "Engineering",
-      managerId: kunal._id,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=alex",
+      managerId: manager1._id,
+      avatar: "https://i.pravatar.cc/150?u=ethan.brooks",
     });
 
-    // Raj: Design → reports to Priya
-    const raj = await User.create({
-      name: "Employee Raj",
-      email: "raj@demo.com",
-      passwordHash: employeeHash,
+    const employee3 = await createUser({
+      name: "Anika Rao",
+      email: "anika.employee@demo.com",
       role: "employee",
       team: "Design",
-      managerId: priya._id,
-      active: true,
-      avatar: "https://i.pravatar.cc/150?u=raj",
+      managerId: manager2._id,
+      status: "busy",
+      avatar: "https://i.pravatar.cc/150?u=anika.rao",
     });
 
-    // ── 4. Projects ───────────────────────────────────────────────────────────
+    const employee4 = await createUser({
+      name: "Leo Martins",
+      email: "leo.employee@demo.com",
+      role: "employee",
+      team: "Design",
+      managerId: manager2._id,
+      avatar: "https://i.pravatar.cc/150?u=leo.martins",
+    });
+
+    const users = {
+      admin,
+      manager1,
+      manager2,
+      employee1,
+      employee2,
+      employee3,
+      employee4,
+    };
+
     console.log("Creating projects...");
+    const createProject = (project) => Project.create(project);
 
-    // Project 1: owned by Kunal — Engineering team + Raj as a cross-team member
-    // This lets us test: Kunal can assign to Raj ONLY because Raj is a project member
-    const project1 = await Project.create({
-      name: "Platform Relaunch",
-      description: "Full overhaul of the customer-facing platform.",
+    const adminProject = await createProject({
+      name: "Enterprise Operating Dashboard",
+      description:
+        "Executive reporting workspace for delivery health, resource allocation, and portfolio-level risk tracking.",
       status: "Active",
-      owner: kunal.name,
-      ownerId: kunal._id,
-      members: [kunal._id, jane._id, alex._id, raj._id], // raj is cross-team but project member
+      owner: admin.name,
+      ownerId: admin._id,
+      members: [
+        admin._id,
+        manager1._id,
+        manager2._id,
+        employee1._id,
+        employee3._id,
+      ],
       createdBy: admin._id,
-      startDate: new Date("2026-04-01"),
-      endDate: new Date("2026-07-31"),
+      startDate: dates.past(1),
+      endDate: dates.july(31),
     });
 
-    // Project 2: owned by Priya — Design team only
-    const project2 = await Project.create({
-      name: "Brand Identity",
-      description: "Redesign the visual language and component library.",
+    const engineeringProject = await createProject({
+      name: "Customer Portal Modernization",
+      description:
+        "Modernize the customer portal with faster onboarding, clearer account workflows, and improved reliability.",
       status: "Active",
-      owner: priya.name,
-      ownerId: priya._id,
-      members: [priya._id, raj._id],
+      owner: manager1.name,
+      ownerId: manager1._id,
+      members: [manager1._id, employee1._id, employee2._id],
       createdBy: admin._id,
-      startDate: new Date("2026-04-15"),
-      endDate: new Date("2026-06-30"),
+      startDate: dates.past(8),
+      endDate: dates.june(28),
     });
 
-    // ── 5. Tasks ──────────────────────────────────────────────────────────────
+    const designProject = await createProject({
+      name: "Design System Refresh",
+      description:
+        "Refresh product UI foundations, component guidance, and accessibility patterns for the next release cycle.",
+      status: "Planning",
+      owner: manager2.name,
+      ownerId: manager2._id,
+      members: [manager2._id, employee3._id, employee4._id],
+      createdBy: admin._id,
+      startDate: dates.past(15),
+      endDate: dates.june(14),
+    });
+
+    const projects = {
+      adminProject,
+      engineeringProject,
+      designProject,
+    };
+
+    const createTask = ({ assignee, reporter, project, ...task }) =>
+      Task.create({
+        ...task,
+        assigneeId: assignee?._id,
+        assigneeName: assignee?.name || "Unassigned",
+        reporterId: reporter._id,
+        reporterName: reporter.name,
+        projectId: project._id,
+        projectName: project.name,
+      });
+
     console.log("Creating tasks...");
+    const tasks = {};
 
-    // Task 1: Jane assigned (same-team, Kunal can assign)
-    const task1 = await Task.create({
-      title: "Build API authentication layer",
-      description: "Implement JWT-based auth with refresh tokens.",
+    tasks.dashboardMetrics = await createTask({
+      title: "Define executive KPI metric catalog",
+      description:
+        "Finalize the source, owner, refresh cadence, and calculation notes for each dashboard metric.",
+      type: "Feature",
+      status: "Done",
+      priority: "High",
+      assignee: manager1,
+      reporter: admin,
+      project: adminProject,
+      dueDate: dates.past(12),
+    });
+
+    tasks.dashboardDataPipeline = await createTask({
+      title: "Connect portfolio delivery data pipeline",
+      description:
+        "Integrate project, task, and team capacity data into the reporting service with daily refresh checks.",
+      type: "Feature",
+      status: "In Progress",
+      priority: "Critical",
+      assignee: employee1,
+      reporter: admin,
+      project: adminProject,
+      dueDate: dates.may(9),
+    });
+
+    tasks.dashboardReview = await createTask({
+      title: "Review portfolio risk visualization",
+      description:
+        "Validate the risk heatmap labels and drill-down behavior with operations stakeholders.",
+      type: "Improvement",
+      status: "Review",
+      priority: "Medium",
+      assignee: manager2,
+      reporter: admin,
+      project: adminProject,
+      dueDate: dates.may(6),
+    });
+
+    tasks.dashboardUnassigned = await createTask({
+      title: "Prepare quarterly leadership export",
+      description:
+        "Create a downloadable leadership summary with project health, overdue work, and team utilization.",
+      type: "task",
+      status: "Todo",
+      priority: "Medium",
+      reporter: admin,
+      project: adminProject,
+      dueDate: dates.may(18),
+    });
+
+    tasks.portalAuth = await createTask({
+      title: "Implement single sign-on handoff",
+      description:
+        "Complete the customer SSO handoff, session renewal, and audit logging for enterprise accounts.",
+      type: "Feature",
+      status: "In Progress",
+      priority: "Critical",
+      assignee: employee1,
+      reporter: manager1,
+      project: engineeringProject,
+      dueDate: dates.may(12),
+    });
+
+    tasks.portalAccountSettings = await createTask({
+      title: "Build account settings workflow",
+      description:
+        "Deliver editable profile, billing contact, and notification preference screens for account admins.",
+      type: "Feature",
+      status: "Todo",
+      priority: "High",
+      assignee: employee2,
+      reporter: manager1,
+      project: engineeringProject,
+      dueDate: dates.may(24),
+    });
+
+    tasks.portalBug = await createTask({
+      title: "Resolve duplicate invitation bug",
+      description:
+        "Prevent duplicate onboarding invitations when an account admin retries a failed invite.",
+      type: "Bug",
+      status: "Review",
+      priority: "High",
+      assignee: employee2,
+      reporter: manager1,
+      project: engineeringProject,
+      dueDate: dates.past(23),
+    });
+
+    tasks.portalCompleted = await createTask({
+      title: "Archive legacy onboarding copy",
+      description:
+        "Move deprecated onboarding copy and screenshots into the release archive for compliance reference.",
+      type: "task",
+      status: "Done",
+      priority: "Low",
+      assignee: manager1,
+      reporter: admin,
+      project: engineeringProject,
+      dueDate: dates.past(18),
+    });
+
+    tasks.portalOverdue = await createTask({
+      title: "Patch session timeout edge case",
+      description:
+        "Fix the expired-session redirect loop affecting customers who keep multiple portal tabs open.",
+      type: "Bug",
+      status: "Todo",
+      priority: "Critical",
+      assignee: employee1,
+      reporter: manager1,
+      project: engineeringProject,
+      dueDate: dates.past(20),
+    });
+
+    tasks.portalUnassigned = await createTask({
+      title: "Document portal release checklist",
+      description:
+        "Create the launch checklist covering smoke tests, rollback owners, analytics, and support readiness.",
+      type: "Improvement",
+      status: "Todo",
+      priority: "Medium",
+      reporter: manager1,
+      project: engineeringProject,
+      dueDate: dates.may(29),
+    });
+
+    tasks.designAudit = await createTask({
+      title: "Audit high-traffic product screens",
+      description:
+        "Review the top product flows for visual inconsistency, accessibility gaps, and outdated components.",
+      type: "Improvement",
+      status: "Done",
+      priority: "Medium",
+      assignee: employee3,
+      reporter: manager2,
+      project: designProject,
+      dueDate: dates.past(17),
+    });
+
+    tasks.designTokens = await createTask({
+      title: "Publish updated color and spacing tokens",
+      description:
+        "Finalize token naming, usage notes, and migration examples for engineering handoff.",
       type: "Feature",
       status: "In Progress",
       priority: "High",
-      assigneeId: jane._id,
-      assigneeName: jane.name,
-      reporterId: kunal._id,
-      reporterName: kunal.name,
-      projectId: project1._id,
-      projectName: project1.name,
-      dueDate: new Date("2026-05-15"),
+      assignee: employee3,
+      reporter: manager2,
+      project: designProject,
+      dueDate: dates.may(10),
     });
 
-    // Task 2: Alex assigned (same-team, Kunal can assign)
-    const task2 = await Task.create({
-      title: "Implement caching strategy",
-      description: "Add Redis caching for high-traffic endpoints.",
+    tasks.designComponents = await createTask({
+      title: "Review data table component guidance",
+      description:
+        "Validate sorting, empty states, density controls, and accessibility notes for complex tables.",
       type: "Improvement",
-      status: "Todo",
-      priority: "Medium",
-      assigneeId: alex._id,
-      assigneeName: alex.name,
-      reporterId: kunal._id,
-      reporterName: kunal.name,
-      projectId: project1._id,
-      projectName: project1.name,
-      dueDate: new Date("2026-05-30"),
-    });
-
-    // Task 3: Raj assigned on project1 (cross-team but project member — allowed)
-    const task3 = await Task.create({
-      title: "Design system integration",
-      description: "Integrate Design team component library into the platform.",
-      type: "Feature",
       status: "Review",
       priority: "High",
-      assigneeId: raj._id,
-      assigneeName: raj.name,
-      reporterId: kunal._id,
-      reporterName: kunal.name,
-      projectId: project1._id,
-      projectName: project1.name,
-      dueDate: new Date("2026-05-10"),
+      assignee: employee4,
+      reporter: manager2,
+      project: designProject,
+      dueDate: dates.may(3),
     });
 
-    // Task 4: Raj on project2 (Priya's project — same-team)
-    const task4 = await Task.create({
-      title: "Create color palette tokens",
-      description: "Define and document the full color token system.",
-      type: "Feature",
+    tasks.designOverdue = await createTask({
+      title: "Finalize accessibility annotation template",
+      description:
+        "Complete the annotation template used to mark focus order, keyboard behavior, and ARIA expectations.",
+      type: "task",
       status: "Todo",
-      priority: "Medium",
-      assigneeId: raj._id,
-      assigneeName: raj.name,
-      reporterId: priya._id,
-      reporterName: priya.name,
-      projectId: project2._id,
-      projectName: project2.name,
-      dueDate: new Date("2026-05-20"),
+      priority: "High",
+      assignee: employee4,
+      reporter: manager2,
+      project: designProject,
+      dueDate: dates.past(22),
     });
 
-    // Task 5: Priya assigned on her own project (manager self-assign)
-    const task5 = await Task.create({
-      title: "Audit existing brand assets",
-      description: "Review all current logos, icons, and typefaces.",
-      type: "Improvement",
-      status: "Done",
+    tasks.designUnassigned = await createTask({
+      title: "Create release note illustrations",
+      description:
+        "Prepare lightweight product illustrations for release notes and internal enablement decks.",
+      type: "task",
+      status: "Todo",
       priority: "Low",
-      assigneeId: priya._id,
-      assigneeName: priya.name,
-      reporterId: admin._id,
-      reporterName: admin.name,
-      projectId: project2._id,
-      projectName: project2.name,
-      dueDate: new Date("2026-04-25"),
+      reporter: manager2,
+      project: designProject,
+      dueDate: dates.may(21),
     });
 
-    // Task 6: Kunal assigned on his own project
-    const task6 = await Task.create({
-      title: "Sprint planning and backlog grooming",
-      description: "Define Q2 sprint goals and prioritize backlog.",
-      type: "Improvement",
-      status: "Done",
-      priority: "Critical",
-      assigneeId: kunal._id,
-      assigneeName: kunal.name,
-      reporterId: admin._id,
-      reporterName: admin.name,
-      projectId: project1._id,
-      projectName: project1.name,
-      dueDate: new Date("2026-04-20"),
-    });
-
-    // ── 6. Comments ───────────────────────────────────────────────────────────
     console.log("Creating comments...");
-    const comment1 = await Comment.create({
-      taskId: task1._id,
-      authorId: kunal._id,
-      authorName: kunal.name,
-      content: "Prioritize token refresh before the integration review on Friday.",
-    });
-    await Task.updateOne({ _id: task1._id }, { $inc: { commentsCount: 1 } });
+    const comments = await Comment.create([
+      {
+        taskId: tasks.dashboardDataPipeline._id,
+        authorId: admin._id,
+        authorName: admin.name,
+        authorAvatar: admin.avatar,
+        content:
+          "Please include the refresh timestamp in the first dashboard slice so leadership can trust the snapshot.",
+      },
+      {
+        taskId: tasks.portalAuth._id,
+        authorId: manager1._id,
+        authorName: manager1.name,
+        authorAvatar: manager1.avatar,
+        content:
+          "Keep the audit event names aligned with the security review checklist before this moves to review.",
+      },
+      {
+        taskId: tasks.portalBug._id,
+        authorId: employee2._id,
+        authorName: employee2.name,
+        authorAvatar: employee2.avatar,
+        content:
+          "The duplicate invite path is covered by a regression test now. Ready for final review.",
+      },
+      {
+        taskId: tasks.designComponents._id,
+        authorId: manager2._id,
+        authorName: manager2.name,
+        authorAvatar: manager2.avatar,
+        content:
+          "Please add one compact-density example for operations teams before we publish the guidance.",
+      },
+    ]);
 
-    const comment2 = await Comment.create({
-      taskId: task3._id,
-      authorId: priya._id,
-      authorName: priya.name,
-      content: "Please align with the Figma component library v2 — the latest export is in Confluence.",
-    });
-    await Task.updateOne({ _id: task3._id }, { $inc: { commentsCount: 1 } });
+    const commentCounts = comments.reduce((counts, comment) => {
+      const taskId = comment.taskId.toString();
+      counts[taskId] = (counts[taskId] || 0) + 1;
+      return counts;
+    }, {});
 
-    // ── 7. Activity Log ───────────────────────────────────────────────────────
-    console.log("Creating activity log...");
+    await Promise.all(
+      Object.entries(commentCounts).map(([taskId, count]) =>
+        Task.updateOne({ _id: taskId }, { $inc: { commentsCount: count } })
+      )
+    );
+
+    console.log("Creating notifications...");
+    await Notification.create([
+      {
+        userId: employee1._id,
+        title: "New task assigned",
+        message: `${manager1.name} assigned you "${tasks.portalAuth.title}".`,
+        type: "assignment",
+        read: false,
+        relatedEntityType: "task",
+        relatedEntityId: tasks.portalAuth._id,
+        actorName: manager1.name,
+        action: "Task Assigned",
+        entityName: tasks.portalAuth.title,
+        link: `/tasks/${tasks.portalAuth._id}`,
+      },
+      {
+        userId: employee2._id,
+        title: "Task ready for review",
+        message: `"${tasks.portalBug.title}" is waiting for manager review.`,
+        type: "info",
+        read: false,
+        relatedEntityType: "task",
+        relatedEntityId: tasks.portalBug._id,
+        actorName: employee2.name,
+        action: "Moved to Review",
+        entityName: tasks.portalBug.title,
+        link: `/tasks/${tasks.portalBug._id}`,
+      },
+      {
+        userId: employee4._id,
+        title: "Task overdue",
+        message: `"${tasks.designOverdue.title}" is past its due date.`,
+        type: "warning",
+        read: false,
+        relatedEntityType: "task",
+        relatedEntityId: tasks.designOverdue._id,
+        actorName: manager2.name,
+        action: "Due Date Missed",
+        entityName: tasks.designOverdue.title,
+        link: `/tasks/${tasks.designOverdue._id}`,
+      },
+      {
+        userId: manager1._id,
+        title: "Unassigned task available",
+        message: `"${tasks.portalUnassigned.title}" is ready to be assigned to an Engineering team member.`,
+        type: "info",
+        read: true,
+        relatedEntityType: "task",
+        relatedEntityId: tasks.portalUnassigned._id,
+        actorName: manager1.name,
+        action: "Task Created",
+        entityName: tasks.portalUnassigned.title,
+        link: `/tasks/${tasks.portalUnassigned._id}`,
+      },
+      {
+        userId: manager2._id,
+        title: "Comment added",
+        message: `${manager2.name} commented on "${tasks.designComponents.title}".`,
+        type: "mention",
+        read: false,
+        relatedEntityType: "comment",
+        relatedEntityId: comments[3]._id,
+        actorName: manager2.name,
+        action: "Comment Added",
+        entityName: tasks.designComponents.title,
+        link: `/tasks/${tasks.designComponents._id}`,
+      },
+    ]);
+
+    console.log("Creating activity logs...");
     await ActivityLog.create([
       {
         actorId: admin._id,
         actorName: admin.name,
         action: "Project Created",
         entityType: "project",
-        entityId: project1._id,
-        entityName: project1.name,
+        entityId: adminProject._id,
+        entityName: adminProject.name,
         metadata: {
-          projectName: project1.name,
-          richText: `${admin.name} created project "${project1.name}"`,
+          projectName: adminProject.name,
+          ownerName: admin.name,
+          richText: `${admin.name} created project "${adminProject.name}" for portfolio reporting.`,
         },
       },
       {
@@ -296,41 +531,160 @@ const runSeed = async () => {
         actorName: admin.name,
         action: "Project Created",
         entityType: "project",
-        entityId: project2._id,
-        entityName: project2.name,
+        entityId: engineeringProject._id,
+        entityName: engineeringProject.name,
         metadata: {
-          projectName: project2.name,
-          richText: `${admin.name} created project "${project2.name}"`,
+          projectName: engineeringProject.name,
+          ownerName: manager1.name,
+          richText: `${admin.name} created project "${engineeringProject.name}" and assigned ${manager1.name} as owner.`,
         },
       },
       {
-        actorId: kunal._id,
-        actorName: kunal.name,
+        actorId: admin._id,
+        actorName: admin.name,
+        action: "Project Created",
+        entityType: "project",
+        entityId: designProject._id,
+        entityName: designProject.name,
+        metadata: {
+          projectName: designProject.name,
+          ownerName: manager2.name,
+          richText: `${admin.name} created project "${designProject.name}" and assigned ${manager2.name} as owner.`,
+        },
+      },
+      {
+        actorId: manager1._id,
+        actorName: manager1.name,
+        action: "Task Assigned",
+        entityType: "task",
+        entityId: tasks.portalAuth._id,
+        entityName: tasks.portalAuth.title,
+        metadata: {
+          taskTitle: tasks.portalAuth.title,
+          assigneeName: employee1.name,
+          projectName: engineeringProject.name,
+          richText: `${manager1.name} assigned "${tasks.portalAuth.title}" to ${employee1.name}.`,
+        },
+      },
+      {
+        actorId: manager1._id,
+        actorName: manager1.name,
         action: "Task Created",
         entityType: "task",
-        entityId: task1._id,
-        entityName: task1.title,
+        entityId: tasks.portalUnassigned._id,
+        entityName: tasks.portalUnassigned.title,
         metadata: {
-          taskTitle: task1.title,
-          assigneeName: jane.name,
-          richText: `${kunal.name} assigned "${task1.title}" to ${jane.name}`,
+          taskTitle: tasks.portalUnassigned.title,
+          assigneeName: "Unassigned",
+          projectName: engineeringProject.name,
+          richText: `${manager1.name} created unassigned task "${tasks.portalUnassigned.title}".`,
+        },
+      },
+      {
+        actorId: employee2._id,
+        actorName: employee2.name,
+        action: "Status Changed",
+        entityType: "task",
+        entityId: tasks.portalBug._id,
+        entityName: tasks.portalBug.title,
+        metadata: {
+          fromStatus: "In Progress",
+          toStatus: "Review",
+          taskTitle: tasks.portalBug.title,
+          richText: `${employee2.name} moved "${tasks.portalBug.title}" to Review.`,
+        },
+      },
+      {
+        actorId: employee3._id,
+        actorName: employee3.name,
+        action: "Task Completed",
+        entityType: "task",
+        entityId: tasks.designAudit._id,
+        entityName: tasks.designAudit.title,
+        metadata: {
+          taskTitle: tasks.designAudit.title,
+          projectName: designProject.name,
+          richText: `${employee3.name} completed "${tasks.designAudit.title}".`,
+        },
+      },
+      {
+        actorId: manager2._id,
+        actorName: manager2.name,
+        action: "Comment Added",
+        entityType: "task",
+        entityId: tasks.designComponents._id,
+        entityName: tasks.designComponents.title,
+        metadata: {
+          taskTitle: tasks.designComponents.title,
+          commentPreview: comments[3].content,
+          richText: `${manager2.name} commented on "${tasks.designComponents.title}".`,
         },
       },
     ]);
 
-    console.log("\n✅ Seed complete!");
-    console.log("──────────────────────────────────────────");
-    console.log("  Admin:    admin@demo.com   / Admin@123");
-    console.log("  Manager:  kunal@demo.com   / Manager@123  (Engineering)");
-    console.log("  Manager:  priya@demo.com   / Manager@123  (Design)");
-    console.log("  Employee: jane@demo.com    / Employee@123 (Engineering → Kunal)");
-    console.log("  Employee: alex@demo.com    / Employee@123 (Engineering → Kunal)");
-    console.log("  Employee: raj@demo.com     / Employee@123 (Design → Priya)");
-    console.log("──────────────────────────────────────────\n");
+    const taskStatusMix = await Task.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const taskTypeMix = await Task.aggregate([
+      {
+        $group: {
+          _id: "$type",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const unassignedCount = await Task.countDocuments({
+      $or: [{ assigneeId: { $exists: false } }, { assigneeId: null }],
+    });
+
+    console.log("\nSeed complete.");
+    console.log("Users:");
+    console.log(`  Admin:    ${admin.name} <${admin.email}> / ${credentials.admin}`);
+    console.log(
+      `  Manager:  ${manager1.name} <${manager1.email}> / ${credentials.manager} (Engineering)`
+    );
+    console.log(
+      `  Manager:  ${manager2.name} <${manager2.email}> / ${credentials.manager} (Design)`
+    );
+    console.log(
+      `  Employee: ${employee1.name} <${employee1.email}> / ${credentials.employee} (Engineering -> ${manager1.name})`
+    );
+    console.log(
+      `  Employee: ${employee2.name} <${employee2.email}> / ${credentials.employee} (Engineering -> ${manager1.name})`
+    );
+    console.log(
+      `  Employee: ${employee3.name} <${employee3.email}> / ${credentials.employee} (Design -> ${manager2.name})`
+    );
+    console.log(
+      `  Employee: ${employee4.name} <${employee4.email}> / ${credentials.employee} (Design -> ${manager2.name})`
+    );
+
+    console.log("\nProjects:");
+    Object.values(projects).forEach((project) => {
+      console.log(`  ${project.name} - owner: ${project.owner}`);
+    });
+
+    console.log("\nTask status mix:");
+    taskStatusMix.forEach((item) => console.log(`  ${item._id}: ${item.count}`));
+
+    console.log("\nTask type mix:");
+    taskTypeMix.forEach((item) => console.log(`  ${item._id}: ${item.count}`));
+
+    console.log(`\nUnassigned tasks included: ${unassignedCount} total`);
+    console.log("Seeded comments, notifications, and activity logs for demo workflows.\n");
 
     process.exit(0);
   } catch (error) {
-    console.error("❌ Seeding failed:", error.message);
+    console.error("Seeding failed:", error);
     process.exit(1);
   }
 };

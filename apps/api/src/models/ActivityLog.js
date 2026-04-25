@@ -8,6 +8,7 @@ const activityLogSchema = new mongoose.Schema(
     entityType: { type: String, enum: ["task", "project", "user", "system"] },
     entityId: { type: mongoose.Schema.Types.ObjectId },
     entityName: { type: String },
+    visibleTo: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     metadata: { type: mongoose.Schema.Types.Mixed },
   },
   {

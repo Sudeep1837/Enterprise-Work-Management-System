@@ -6,12 +6,12 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
-import { deleteTaskAsync, createTask, updateTaskAsync } from "../../store/workSlice";
+import { deleteTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
 import { selectDashboardMetrics } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
-import { CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
+import { Archive, CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
 import { canDeleteTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
 
 export default function TasksPage() {
@@ -27,6 +27,8 @@ export default function TasksPage() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkArchive, setBulkArchive] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
   const [newTaskId, setNewTaskId] = useState(null);
 
@@ -103,6 +105,22 @@ export default function TasksPage() {
     else delete taskRefs.current[id];
   }, []);
 
+  const clearSelection = () => setSelectedIds([]);
+
+  const toggleSelected = (taskId) => {
+    setSelectedIds((ids) => ids.includes(taskId) ? ids.filter((id) => id !== taskId) : [...ids, taskId]);
+  };
+
+  const runBulkUpdate = async (payload) => {
+    const result = await dispatch(bulkUpdateTasksAsync({ ids: selectedIds, ...payload }));
+    if (result.error) {
+      toast.error(result.payload || "Bulk update failed");
+      return;
+    }
+    toast.success(`${result.payload.length} task${result.payload.length === 1 ? "" : "s"} updated`);
+    clearSelection();
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -176,6 +194,44 @@ export default function TasksPage() {
 
       <PageCard>
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {selectedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 p-2 dark:border-indigo-500/20 dark:bg-indigo-500/10 sm:w-full">
+              <span className="px-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                {selectedIds.length} selected
+              </span>
+              <select
+                className="rounded-lg border border-white/60 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200"
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) runBulkUpdate({ status: e.target.value });
+                  e.target.value = "";
+                }}
+              >
+                <option value="">Set status...</option>
+                {["Todo", "In Progress", "Review", "Done"].map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+              {!isEmployee(currentUser) && (
+                <select
+                  className="rounded-lg border border-white/60 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const user = users.find((item) => (item.id || item._id?.toString()) === e.target.value);
+                    if (user) runBulkUpdate({ assigneeId: user.id || user._id, assigneeName: user.name });
+                    e.target.value = "";
+                  }}
+                >
+                  <option value="">Assign to...</option>
+                  {users.map((user) => <option key={user.id || user._id} value={user.id || user._id}>{user.name}</option>)}
+                </select>
+              )}
+              {!isEmployee(currentUser) && (
+                <Button variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => setBulkArchive(true)}>
+                  <Archive className="h-4 w-4" /> Archive
+                </Button>
+              )}
+              <Button variant="ghost" onClick={clearSelection}>Clear</Button>
+            </div>
+          )}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -232,6 +288,20 @@ export default function TasksPage() {
                         <Sparkles className="h-2.5 w-2.5" /> Just created
                       </span>
                     )}
+
+                    <div className="flex items-start pt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(taskId)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleSelected(taskId);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        aria-label={`Select ${task.title}`}
+                      />
+                    </div>
 
                     <div className="relative flex-1" onClick={() => setSelected(taskId)}>
                       <div className="flex items-center gap-3">
@@ -319,11 +389,21 @@ export default function TasksPage() {
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete task?"
-        message="This will permanently remove the task."
+        message="This will archive the task and keep historical reporting intact."
         onCancel={() => setDeleting(null)}
         onConfirm={() => {
           dispatch(deleteTaskAsync(deleting.id || deleting._id));
           setDeleting(null);
+        }}
+      />
+      <ConfirmDialog
+        open={bulkArchive}
+        title="Archive selected tasks?"
+        message="Selected tasks will be removed from active task views but retained for audit history."
+        onCancel={() => setBulkArchive(false)}
+        onConfirm={() => {
+          setBulkArchive(false);
+          runBulkUpdate({ archived: true });
         }}
       />
       <TaskDetailsDrawer

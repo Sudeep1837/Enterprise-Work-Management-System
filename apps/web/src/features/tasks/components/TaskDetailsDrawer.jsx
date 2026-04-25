@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
 import { updateTaskAsync, addTaskCommentAsync } from "../../../store/workSlice";
 import { Badge, Button } from "../../common/components/UI";
+import apiClient from "../../../services/apiClient";
 import {
   X, Paperclip, MessageSquare, Send, User, Calendar,
   FolderKanban, AlertTriangle, Tag, Clock, CheckCircle2,
@@ -58,13 +59,54 @@ function Avatar({ name }) {
   );
 }
 
+function MentionText({ text }) {
+  const parts = String(text || "").split(/(@[a-zA-Z][a-zA-Z0-9._-]{1,40})/g);
+  return parts.map((part, index) => (
+    part.startsWith("@")
+      ? <span key={`${part}-${index}`} className="font-semibold text-indigo-600 dark:text-indigo-400">{part}</span>
+      : <span key={`${part}-${index}`}>{part}</span>
+  ));
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
-export default function TaskDetailsDrawer({ task, onClose }) {
+export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
   const dispatch = useDispatch();
   const user     = useSelector((state) => state.auth.user);
+  const activity = useSelector((state) => state.work.activity || []);
+  const [details, setDetails] = useState(null);
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("details"); // "details" | "comments" | "attachments"
+
+  useEffect(() => {
+    let ignore = false;
+    const id = initialTask?.id || initialTask?._id;
+    setDetails(initialTask || null);
+    setActiveTab("details");
+    if (!id) return undefined;
+
+    apiClient.get(`/tasks/${id}`)
+      .then((response) => {
+        if (!ignore) setDetails(response.data);
+      })
+      .catch(() => {
+        if (!ignore) setDetails(initialTask);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [initialTask]);
+
+  const activeTask = details || initialTask;
+  const task = activeTask;
+  const taskId = activeTask?.id || activeTask?._id;
+  const taskHistory = useMemo(() => {
+    if (!taskId) return [];
+    return activity
+      .filter((item) => (item.entityId || "").toString() === taskId.toString())
+      .slice(0, 6);
+  }, [activity, taskId]);
 
   const uploadAttachment = (e) => {
     const file = e.target.files?.[0];
@@ -76,25 +118,34 @@ export default function TaskDetailsDrawer({ task, onClose }) {
       type: file.type,
       uploadedAt: new Date().toISOString(),
     };
-    dispatch(updateTaskAsync({ id: task.id, attachments: [...(task.attachments || []), newAttachment] }));
+    dispatch(updateTaskAsync({ id: taskId, attachments: [...(activeTask.attachments || []), newAttachment] }));
   };
 
   const handleSendComment = async () => {
     if (!comment.trim()) return;
     setSending(true);
-    await dispatch(addTaskCommentAsync({ id: task.id, content: comment.trim() }));
+    const result = await dispatch(addTaskCommentAsync({ id: taskId, content: comment.trim() }));
+    if (!result.error) {
+      setDetails((current) => current
+        ? {
+            ...current,
+            comments: [result.payload.comment, ...(current.comments || [])],
+            commentsCount: (current.commentsCount || 0) + 1,
+          }
+        : current);
+    }
     setComment("");
     setSending(false);
   };
 
-  const priorityConfig = getPriorityConfig(task?.priority);
-  const statusConfig   = getStatusConfig(task?.status);
+  const priorityConfig = getPriorityConfig(activeTask?.priority);
+  const statusConfig   = getStatusConfig(activeTask?.status);
 
-  const isOverdue = task?.dueDate && new Date(task.dueDate) < new Date() && task?.status !== "Done";
+  const isOverdue = activeTask?.dueDate && new Date(activeTask.dueDate) < new Date() && activeTask?.status !== "Done";
 
   return (
     <AnimatePresence>
-      {task && (
+      {activeTask && (
         <>
           {/* Backdrop */}
           <motion.div
@@ -143,6 +194,7 @@ export default function TaskDetailsDrawer({ task, onClose }) {
                 { id: "details",     label: "Details" },
                 { id: "comments",    label: `Comments ${task.commentsCount ? `(${task.commentsCount})` : ""}` },
                 { id: "attachments", label: `Files ${task.attachments?.length ? `(${task.attachments.length})` : ""}` },
+                { id: "history",     label: "History" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -190,6 +242,9 @@ export default function TaskDetailsDrawer({ task, onClose }) {
                     </MetaRow>
                     <MetaRow icon={FolderKanban} label="Project">
                       {task.projectName || <span className="text-slate-400">No project</span>}
+                    </MetaRow>
+                    <MetaRow icon={User} label="Reporter">
+                      {task.reporterName || <span className="text-slate-400">Not recorded</span>}
                     </MetaRow>
                     <MetaRow icon={Tag} label="Type">
                       <Badge value={task.type} tone="slate" />
@@ -244,7 +299,7 @@ export default function TaskDetailsDrawer({ task, onClose }) {
                               <span className="text-[10px] text-slate-400">{relativeTime(c.createdAt)}</span>
                             </div>
                             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                              {c.content || c.text}
+                              <MentionText text={c.content || c.text} />
                             </p>
                           </div>
                         </div>
@@ -315,6 +370,23 @@ export default function TaskDetailsDrawer({ task, onClose }) {
                         </li>
                       ))}
                     </ul>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "history" && (
+                <div className="px-5 py-4 space-y-3">
+                  {!taskHistory.length ? (
+                    <div className="py-12 text-center text-sm text-slate-400">No task history recorded yet.</div>
+                  ) : (
+                    taskHistory.map((item) => (
+                      <div key={item.id || item._id} className="rounded-xl border border-slate-200/60 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-slate-800/40">
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {item.metadata?.richText || `${item.actorName || "System"} ${item.action?.toLowerCase()} ${item.entityName || "this task"}`}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">{relativeTime(item.createdAt)}</p>
+                      </div>
+                    ))
                   )}
                 </div>
               )}
