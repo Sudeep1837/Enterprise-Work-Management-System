@@ -363,34 +363,44 @@ The frontend is deployed from `apps/web`.
 
 ### Backend: Render
 
-The backend is designed to deploy from `apps/api`.
+The backend is already deployed on Render and serves the production API for the Vercel frontend.
 
 - Live backend: https://enterprise-work-management-system.onrender.com
 - Health check: https://enterprise-work-management-system.onrender.com/api/health
+- Production API base URL: `https://enterprise-work-management-system.onrender.com/api`
 
-Recommended Render settings:
+Current Render deployment configuration:
 
-- Root directory: `apps/api`
-- Build command: `npm install`
-- Start command: `npm start`
-- Node version: 22.x
+| Setting | Value |
+| --- | --- |
+| Platform | Render Web Service |
+| Root Directory | `apps/api` |
+| Build Command | `npm install` |
+| Start Command | `npm start` |
+| Runtime | Node.js 22.x |
+| Database | MongoDB Atlas |
+| File/Image Storage | Cloudinary |
 
-Required production variables:
+Production environment variables configured in Render:
 
-- `PORT`
-- `CLIENT_URL`
-- `JWT_SECRET`
-- `JWT_EXPIRES_IN`
-- `MONGODB_URI`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Backend server port provided by Render. |
+| `CLIENT_URL` | Deployed Vercel frontend URL used for CORS. |
+| `JWT_SECRET` | Secure JWT signing secret. |
+| `JWT_EXPIRES_IN` | JWT session expiry duration. |
+| `MONGODB_URI` | MongoDB Atlas production database connection string. |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name for media uploads. |
+| `CLOUDINARY_API_KEY` | Cloudinary API key. |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret. |
 
-After deployment, verify:
+Post-deployment verification:
 
 ```text
-GET /api/health
+GET https://enterprise-work-management-system.onrender.com/api/health
 ```
+
+Expected result: the health endpoint should return a successful response confirming that the Render backend is running.
 
 ## Screenshots
 
@@ -439,6 +449,5 @@ The screenshots below show the deployed application flows and are stored under `
 ### Profile
 
 ![Profile page](docs/screenshots/profile.png)
-
 
 
