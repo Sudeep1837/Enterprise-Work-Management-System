@@ -14,8 +14,8 @@ const DOMAIN_EVENTS = [
 
 let ioInstance;
 
-export function createSocketServer(httpServer, clientUrl) {
-  const io = new Server(httpServer, { cors: { origin: clientUrl, credentials: true } });
+export function createSocketServer(httpServer, corsOptions) {
+  const io = new Server(httpServer, { cors: corsOptions });
   ioInstance = io;
 
   io.use((socket, next) => {

@@ -5,9 +5,12 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const env = {
+  nodeEnv: process.env.NODE_ENV || "development",
   port: process.env.PORT || 5000,
-  clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+  clientUrl: process.env.CLIENT_URL,
   jwtSecret: process.env.JWT_SECRET || "super-secret-demo-key",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "8h",
   mongoUri: process.env.MONGODB_URI,
@@ -19,7 +22,19 @@ const env = {
 };
 
 if (!env.mongoUri) {
-  console.warn("WARNING: MONGODB_URI is not defined in the environment.");
+  const message = "MONGODB_URI is not defined in the environment.";
+  if (isProduction) {
+    throw new Error(message);
+  }
+  console.warn(`WARNING: ${message}`);
+}
+
+if (isProduction && (!process.env.JWT_SECRET || env.jwtSecret === "super-secret-demo-key")) {
+  throw new Error("JWT_SECRET must be set to a strong non-demo value in production.");
+}
+
+if (isProduction && !env.clientUrl) {
+  console.warn("WARNING: CLIENT_URL is not defined. Set it to the deployed frontend origin.");
 }
 
 if (!env.cloudinary.cloudName || !env.cloudinary.apiKey || !env.cloudinary.apiSecret) {

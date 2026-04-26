@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import env from "./config/env.js";
+import { allowedClientOrigins, corsOptions, socketCorsOptions } from "./config/cors.js";
 import connectDB from "./db/connect.js";
 import authRoutes from "./routes/auth/authRoutes.js";
 import userRoutes from "./routes/users/userRoutes.js";
@@ -15,7 +16,8 @@ import { createSocketServer } from "./sockets/socketServer.js";
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors({ origin: env.clientUrl, credentials: true }));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 app.get("/api/health", (req, res) => {
@@ -30,9 +32,14 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/activity", activityRoutes);
 
 app.use(errorMiddleware);
-createSocketServer(server, env.clientUrl);
+createSocketServer(server, socketCorsOptions);
 
-server.listen(env.port, async () => {
+const startServer = async () => {
   await connectDB();
-  console.log(`API server running on http://localhost:${env.port}`);
-});
+  server.listen(env.port, () => {
+    console.log(`API server listening on port ${env.port}`);
+    console.log(`Allowed client origins: ${allowedClientOrigins.join(", ")}`);
+  });
+};
+
+startServer();
