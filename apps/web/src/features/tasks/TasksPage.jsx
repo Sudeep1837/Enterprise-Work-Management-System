@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useRevealFocus } from "../../hooks/useRevealFocus";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
@@ -35,6 +36,11 @@ export default function TasksPage() {
   const debounced = useDebouncedValue(query);
   const taskRefs = useRef({});
   const newTaskHighlightTimer = useRef(null);
+  const editingKey = editing?.id || editing?._id || (editing ? "new-task" : "");
+  const { targetRef: editPanelRef, isHighlighted: isEditPanelHighlighted } = useRevealFocus(
+    Boolean(editing),
+    editingKey
+  );
 
   const filtered = useMemo(() => {
     let result = tasks;
@@ -168,10 +174,17 @@ export default function TasksPage() {
         {editing && (
           <motion.div
             key="task-form"
+            ref={editPanelRef}
+            tabIndex={-1}
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
+            className={`rounded-2xl outline-none transition-shadow duration-300 ${
+              isEditPanelHighlighted
+                ? "ring-2 ring-indigo-400/70 ring-offset-2 ring-offset-slate-50 dark:ring-indigo-500/60 dark:ring-offset-slate-950"
+                : ""
+            }`}
           >
             {isEmployee(currentUser) ? (
               // Employees get the execution-only panel

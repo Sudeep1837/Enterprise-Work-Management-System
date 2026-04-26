@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useRevealFocus } from "../../hooks/useRevealFocus";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, TableShell, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric, ProgressRing } from "../common/components/Analytics";
@@ -19,6 +20,11 @@ export default function ProjectsPage() {
   const [sort, setSort] = useState("updatedAt");
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const editingKey = editing?.id || editing?._id || (editing ? "new-project" : "");
+  const { targetRef: editPanelRef, isHighlighted: isEditPanelHighlighted } = useRevealFocus(
+    Boolean(editing),
+    editingKey
+  );
 
   const debounced = useDebouncedValue(query);
   const filtered = useMemo(
@@ -203,9 +209,19 @@ export default function ProjectsPage() {
       </PageCard>
 
       {editing && (
-        <PageCard title={editing.id ? "Edit Project" : "Create Project"}>
-          <ProjectForm initialValues={editing} onSubmit={saveProject} onCancel={() => setEditing(null)} />
-        </PageCard>
+        <div
+          ref={editPanelRef}
+          tabIndex={-1}
+          className={`rounded-2xl outline-none transition-shadow duration-300 ${
+            isEditPanelHighlighted
+              ? "ring-2 ring-indigo-400/70 ring-offset-2 ring-offset-slate-50 dark:ring-indigo-500/60 dark:ring-offset-slate-950"
+              : ""
+          }`}
+        >
+          <PageCard title={editing.id ? "Edit Project" : "Create Project"}>
+            <ProjectForm initialValues={editing} onSubmit={saveProject} onCancel={() => setEditing(null)} />
+          </PageCard>
+        </div>
       )}
 
       <ConfirmDialog

@@ -16,10 +16,10 @@ const BAR_DATA = [
 
 export function AnimatedBackground() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-slate-950">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-b from-white via-slate-50 to-slate-100 transition-colors duration-300 dark:bg-slate-950 dark:bg-none">
       <div className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80" aria-hidden="true">
         <div
-          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem] dark:opacity-20"
           style={{
             clipPath:
               'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
@@ -28,14 +28,14 @@ export function AnimatedBackground() {
       </div>
       <div className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]" aria-hidden="true">
         <div
-          className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#9089fc] to-[#0ea5e9] opacity-20 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
+          className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#9089fc] to-[#0ea5e9] opacity-25 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem] dark:opacity-20"
           style={{
             clipPath:
               'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
           }}
         />
       </div>
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 brightness-100 contrast-150 dark:opacity-20"></div>
     </div>
   );
 }
@@ -47,25 +47,25 @@ function MockTaskCard({ title, tag, delay, index }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
       whileHover={{ scale: 1.02 }}
-      className="mb-3 cursor-grab rounded-xl border border-white/10 bg-white/5 p-3 shadow-sm backdrop-blur-xl transition hover:bg-white/10"
+      className="mb-3 cursor-grab rounded-xl border border-slate-200 bg-white/80 p-3 shadow-sm backdrop-blur-xl transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
     >
       <div className="mb-2 flex items-center justify-between">
-        <div className="flex h-5 w-5 items-center justify-center rounded bg-white/10">
+        <div className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 dark:bg-white/10">
           <GripHorizontal className="h-3 w-3 text-slate-400" />
         </div>
-        <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-medium text-indigo-300 ring-1 ring-indigo-500/30">
+        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-indigo-500/30">
           {tag}
         </span>
       </div>
-      <p className="mb-3 text-sm font-medium text-slate-200">{title}</p>
-      <div className="flex items-center justify-between text-xs text-slate-400">
+      <p className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">{title}</p>
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5">
           <Clock className="h-3 w-3" />
           <span>Oct 1{index}</span>
         </div>
         <div className="flex -space-x-1">
-          <div className="h-5 w-5 rounded-full border border-slate-800 bg-indigo-500" />
-          <div className="h-5 w-5 rounded-full border border-slate-800 bg-emerald-500" />
+          <div className="h-5 w-5 rounded-full border border-white bg-indigo-500 dark:border-slate-800" />
+          <div className="h-5 w-5 rounded-full border border-white bg-emerald-500 dark:border-slate-800" />
         </div>
       </div>
     </motion.div>
@@ -74,7 +74,7 @@ function MockTaskCard({ title, tag, delay, index }) {
 
 export function AnimatedWorkflowBoard() {
   return (
-    <div className="relative mx-auto mt-16 max-w-5xl rounded-t-2xl border-x border-t border-white/10 bg-slate-900/40 p-4 shadow-2xl backdrop-blur-2xl sm:mt-24 sm:p-6 lg:p-8">
+    <div className="relative mx-auto mt-16 max-w-5xl rounded-t-2xl border-x border-t border-slate-200 bg-white/65 p-4 shadow-2xl shadow-slate-200/80 backdrop-blur-2xl sm:mt-24 sm:p-6 dark:border-white/10 dark:bg-slate-900/40 dark:shadow-black/30 lg:p-8">
       {/* Mac window controls */}
       <div className="mb-6 flex items-center gap-2">
         <div className="h-3 w-3 rounded-full bg-red-500/80" />
@@ -86,8 +86,8 @@ export function AnimatedWorkflowBoard() {
         {/* Column 1 */}
         <div className="flex flex-col">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">To Do</h3>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-xs text-slate-300">3</span>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">To Do</h3>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-600 dark:bg-white/10 dark:text-slate-300">3</span>
           </div>
           <MockTaskCard title="Design System Audit" tag="Design" delay={0.2} index={2} />
           <MockTaskCard title="API Schema Review" tag="Backend" delay={0.3} index={4} />
@@ -97,7 +97,7 @@ export function AnimatedWorkflowBoard() {
         {/* Column 2 */}
         <div className="flex flex-col">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">In Progress</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">In Progress</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/20 text-xs text-indigo-300">2</span>
           </div>
           <motion.div
@@ -115,7 +115,7 @@ export function AnimatedWorkflowBoard() {
         {/* Column 3 */}
         <div className="flex flex-col">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">Done</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Done</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-xs text-emerald-300">2</span>
           </div>
           <div className="opacity-60">
@@ -126,7 +126,7 @@ export function AnimatedWorkflowBoard() {
       </div>
       
       {/* Fade out bottom gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-50 to-transparent dark:from-slate-950" />
     </div>
   );
 }
@@ -137,7 +137,7 @@ export function HeroSection({ isLoggedIn }) {
       <AnimatedBackground />
       <div className="relative z-10 mx-auto max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm font-medium text-indigo-300 backdrop-blur-md">
+          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-50/80 px-4 py-1.5 text-sm font-medium text-indigo-700 backdrop-blur-md dark:bg-indigo-500/10 dark:text-indigo-300">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
@@ -150,7 +150,7 @@ export function HeroSection({ isLoggedIn }) {
           initial={{ opacity: 0, y: 16 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-r from-white to-slate-400 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-7xl"
+          className="bg-gradient-to-r from-slate-950 to-slate-500 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent dark:from-white dark:to-slate-400 sm:text-7xl"
         >
           Align your teams.<br />Deliver with clarity.
         </motion.h1>
@@ -159,7 +159,7 @@ export function HeroSection({ isLoggedIn }) {
           initial={{ opacity: 0, y: 16 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.2 }}
-          className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300"
+          className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300"
         >
           The premium collaborative workspace built for high-performing teams to track projects, manage tasks, and visualize execution effortlessly.
         </motion.p>
@@ -176,7 +176,7 @@ export function HeroSection({ isLoggedIn }) {
           >
             {isLoggedIn ? "Go to Dashboard" : "Start your workspace"}
           </a>
-          <a href="#features" className="text-sm font-semibold leading-6 text-white hover:text-indigo-300 transition group flex items-center gap-1">
+          <a href="#features" className="group flex items-center gap-1 text-sm font-semibold leading-6 text-slate-700 transition hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300">
             See features <span className="group-hover:translate-x-1 xl:transition-transform" aria-hidden="true">→</span>
           </a>
         </motion.div>
@@ -204,10 +204,10 @@ export function FeatureGrid() {
   ];
 
   return (
-    <section id="features" className="relative z-10 mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8 bg-slate-950">
+    <section id="features" className="relative z-10 mx-auto max-w-7xl bg-slate-50 px-6 py-24 transition-colors duration-300 dark:bg-slate-950 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-2xl lg:text-center">
         <h2 className="text-base font-semibold leading-7 text-indigo-400">Deploy Faster</h2>
-        <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Everything your delivery teams need</p>
+        <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">Everything your delivery teams need</p>
       </div>
       <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:max-w-none">
         <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
@@ -218,13 +218,13 @@ export function FeatureGrid() {
               whileInView={{ opacity: 1, y: 0 }} 
               viewport={{ once: true }} 
               transition={{ delay: idx * 0.1 }}
-              className="flex flex-col rounded-2xl bg-white/5 p-8 border border-white/10 hover:bg-white/10 transition backdrop-blur-sm"
+              className="flex flex-col rounded-2xl border border-slate-200 bg-white/80 p-8 shadow-sm backdrop-blur-sm transition hover:bg-white hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:shadow-none"
             >
-              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
+              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-slate-900 dark:text-white">
                 <feature.icon className="h-5 w-5 flex-none text-indigo-400" aria-hidden="true" />
                 {feature.title}
               </dt>
-              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-400">
+              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-600 dark:text-slate-400">
                 <p className="flex-auto">{feature.desc}</p>
               </dd>
             </motion.div>
@@ -237,10 +237,10 @@ export function FeatureGrid() {
 
 export function RolesSection() {
   return (
-    <section id="roles" className="relative z-10 bg-slate-900 py-24 sm:py-32">
+    <section id="roles" className="relative z-10 bg-white py-24 transition-colors duration-300 dark:bg-slate-900 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Built for every role</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">Built for every role</h2>
         </div>
         <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-6 sm:mt-20 lg:max-w-none lg:grid-cols-3">
           {[
@@ -254,10 +254,10 @@ export function RolesSection() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: idx * 0.15 }}
-              className={`rounded-3xl border ${border} bg-slate-800/50 p-8 xl:p-10`}
+              className={`rounded-3xl border ${border} bg-white p-8 shadow-sm dark:bg-slate-800/50 dark:shadow-none xl:p-10`}
             >
               <h3 className={`text-lg font-semibold leading-8 ${color}`}>{title}</h3>
-              <p className="mt-4 text-sm leading-6 text-slate-300">{desc}</p>
+              <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{desc}</p>
             </motion.div>
           ))}
         </div>
@@ -275,15 +275,15 @@ export function MetricsSection() {
     { val: "99.9%",  label: "Platform Uptime",  sub: "SLA guarantee",         color: "text-amber-400" },
   ];
   return (
-    <section className="relative z-10 border-y border-white/5 bg-slate-900/50 py-14">
+    <section className="relative z-10 border-y border-slate-200 bg-white/70 py-14 transition-colors duration-300 dark:border-white/5 dark:bg-slate-900/50">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
           {stats.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
-              className="rounded-2xl border border-white/8 bg-white/5 p-6 text-center backdrop-blur-sm hover:bg-white/10 transition">
+              className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm backdrop-blur-sm transition hover:shadow-md dark:border-white/8 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:shadow-none">
               <p className={`text-3xl font-black ${s.color}`}>{s.val}</p>
-              <p className="mt-1 text-sm font-semibold text-white">{s.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{s.sub}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{s.label}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{s.sub}</p>
             </motion.div>
           ))}
         </div>
@@ -295,13 +295,25 @@ export function MetricsSection() {
 // ─── Analytics Preview ────────────────────────────────────────────────────────
 function PreviewCard({ title, sub, children }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur-sm">
-      <p className="text-sm font-semibold text-white">{title}</p>
-      <p className="text-xs text-slate-400 mb-3">{sub}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/60 dark:shadow-none">
+      <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{sub}</p>
       {children}
     </div>
   );
 }
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg dark:border-white/10 dark:bg-slate-800 dark:text-slate-100">
+      <p className="font-semibold">{label}</p>
+      <p className="text-indigo-600 dark:text-indigo-300">{payload[0].value} completed</p>
+    </div>
+  );
+}
+
 export function AnalyticsPreview() {
   const total = DONUT_DATA.reduce((a, d) => a + d.value, 0);
   const projects = [
@@ -317,12 +329,12 @@ export function AnalyticsPreview() {
     { n: "Morgan P.",t: 9,  c: "bg-cyan-500" },
   ];
   return (
-    <section className="relative z-10 bg-slate-950 py-24">
+    <section className="relative z-10 bg-slate-50 py-24 transition-colors duration-300 dark:bg-slate-950">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="text-center mb-14">
           <p className="text-base font-semibold text-indigo-400">Live Intelligence</p>
-          <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Real-time visibility into every team</h2>
-          <p className="mt-3 text-slate-400 max-w-xl mx-auto">Purpose-built analytics for delivery teams — not generic BI tools.</p>
+          <h2 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white sm:text-4xl">Real-time visibility into every team</h2>
+          <p className="mx-auto mt-3 max-w-xl text-slate-600 dark:text-slate-400">Purpose-built analytics for delivery teams — not generic BI tools.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <PreviewCard title="Task Status" sub="Live snapshot">
@@ -333,13 +345,13 @@ export function AnalyticsPreview() {
                 </Pie>
               </PieChart>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-white">{total}</span>
-                <span className="text-xs text-slate-400">Tasks</span>
+                <span className="text-xl font-black text-slate-900 dark:text-white">{total}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Tasks</span>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-1">
               {DONUT_DATA.map(d => (
-                <div key={d.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+                <div key={d.name} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ background: d.color }} />{d.name}
                 </div>
               ))}
@@ -350,7 +362,7 @@ export function AnalyticsPreview() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={BAR_DATA} margin={{ top: 0, right: 0, left: -28, bottom: 0 }} barSize={14}>
                   <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
-                  <Tooltip cursor={{ fill: "rgba(99,102,241,0.08)" }} contentStyle={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", fontSize: "12px", color: "#fff" }} />
+                  <Tooltip cursor={{ fill: "rgba(99,102,241,0.08)" }} content={<ChartTooltip />} />
                   <Bar dataKey="v" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -361,10 +373,10 @@ export function AnalyticsPreview() {
               {projects.map(p => (
                 <div key={p.n}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-300 truncate">{p.n}</span>
-                    <span className="text-slate-400 ml-2 shrink-0">{p.p}%</span>
+                    <span className="truncate text-slate-600 dark:text-slate-300">{p.n}</span>
+                    <span className="ml-2 shrink-0 text-slate-500 dark:text-slate-400">{p.p}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-slate-700">
+                  <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
                     <div className={`h-full rounded-full ${p.c}`} style={{ width: `${p.p}%` }} />
                   </div>
                 </div>
@@ -378,10 +390,10 @@ export function AnalyticsPreview() {
                   <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${m.c} text-xs font-bold text-white`}>{m.n[0]}</div>
                   <div className="flex-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-200">{m.n}</span>
-                      <span className="text-slate-400">{m.t}</span>
+                      <span className="text-slate-700 dark:text-slate-200">{m.n}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{m.t}</span>
                     </div>
-                    <div className="h-1 rounded-full bg-slate-700">
+                    <div className="h-1 rounded-full bg-slate-200 dark:bg-slate-700">
                       <div className={`h-full rounded-full ${m.c}`} style={{ width: `${(m.t / 14) * 100}%` }} />
                     </div>
                   </div>
@@ -403,11 +415,11 @@ export function WorkflowSection() {
     { n: "03", title: "Track & Deliver",     desc: "Monitor Kanban progress, get instant notifications, and review auto-generated reports.", color: "text-cyan-400",    border: "border-cyan-500/20",    bg: "bg-cyan-500/5" },
   ];
   return (
-    <section className="relative z-10 bg-slate-900 py-24">
+    <section className="relative z-10 bg-white py-24 transition-colors duration-300 dark:bg-slate-900">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="text-center mb-14">
           <p className="text-base font-semibold text-indigo-400">The System</p>
-          <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">From kickoff to delivery, end-to-end</h2>
+          <h2 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white sm:text-4xl">From kickoff to delivery, end-to-end</h2>
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           {steps.map((s, i) => (
@@ -415,7 +427,7 @@ export function WorkflowSection() {
               className={`rounded-3xl border ${s.border} ${s.bg} p-8 backdrop-blur-sm`}>
               <div className={`text-5xl font-black opacity-30 mb-4 ${s.color}`}>{s.n}</div>
               <h3 className={`text-lg font-semibold mb-3 ${s.color}`}>{s.title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{s.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -432,21 +444,21 @@ export function TrustSection() {
     { q: "Reports update automatically as tasks close. I stopped chasing status updates. The analytics section alone made this worth it.", name: "Aiko T.", title: "Delivery Lead", init: "AT", c: "bg-cyan-500" },
   ];
   return (
-    <section className="relative z-10 bg-slate-950 py-24">
+    <section className="relative z-10 bg-slate-50 py-24 transition-colors duration-300 dark:bg-slate-950">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">Loved by delivery teams</h2>
-          <p className="mt-3 text-slate-400">Teams across the org finally aligned on one platform.</p>
+          <h2 className="text-3xl font-bold text-slate-950 dark:text-white sm:text-4xl">Loved by delivery teams</h2>
+          <p className="mt-3 text-slate-600 dark:text-slate-400">Teams across the org finally aligned on one platform.</p>
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           {quotes.map((t, i) => (
             <motion.div key={t.name} initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-              className="flex flex-col rounded-3xl border border-white/8 bg-slate-900/60 p-8 backdrop-blur-sm hover:bg-slate-900/80 transition">
-              <p className="text-slate-300 text-sm leading-relaxed flex-1">"{t.q}"</p>
+              className="flex flex-col rounded-3xl border border-slate-200 bg-white/85 p-8 shadow-sm backdrop-blur-sm transition hover:bg-white hover:shadow-md dark:border-white/8 dark:bg-slate-900/60 dark:hover:bg-slate-900/80 dark:hover:shadow-none">
+              <p className="flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">"{t.q}"</p>
               <div className="mt-6 flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-full ${t.c} text-xs font-bold text-white shrink-0`}>{t.init}</div>
                 <div>
-                  <p className="text-sm font-semibold text-white">{t.name}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.name}</p>
                   <p className="text-xs text-slate-500">{t.title}</p>
                 </div>
               </div>

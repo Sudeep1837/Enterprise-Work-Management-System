@@ -6,6 +6,7 @@ import { InsightCard } from "../common/components/Analytics";
 import Avatar from "../common/components/Avatar";
 import { applyTextFilter } from "../common/utils/filtering";
 import { createUserAsync, updateUserAsync, fetchUsers } from "../../store/workSlice";
+import { useRevealFocus } from "../../hooks/useRevealFocus";
 import { selectWorkloadMetrics } from "../../store/selectors";
 import UserForm from "./components/UserForm";
 import { formatRoleLabel, getRoleColors, formatTeamLabel, formatManagerName } from "../../lib/formatters";
@@ -25,6 +26,11 @@ export default function UsersPage() {
 
   const userRefs = useRef({});
   const highlightTimer = useRef(null);
+  const editingKey = editing?.id || editing?._id || (editing ? "new-user" : "");
+  const { targetRef: editPanelRef, isHighlighted: isEditPanelHighlighted } = useRevealFocus(
+    Boolean(editing && isAdmin(currentUser)),
+    editingKey
+  );
 
   const setRef = useCallback((id, el) => {
     if (el) userRefs.current[id] = el;
@@ -360,38 +366,48 @@ export default function UsersPage() {
 
       {/* ── Edit / Create Panel — admin only ── */}
       {editing && isAdmin(currentUser) && (
-        <PageCard title={editing.id ? "Edit User" : "Add New User"}>
-          <UserForm
-            initialValues={editing}
-            onCancel={() => setEditing(null)}
-            onSubmit={(values) => {
-              const payload = { ...values };
-              if (!payload.password) delete payload.password;
-              // Clear managerId if not an employee
-              if (payload.role !== "employee") payload.managerId = null;
+        <div
+          ref={editPanelRef}
+          tabIndex={-1}
+          className={`rounded-2xl outline-none transition-shadow duration-300 ${
+            isEditPanelHighlighted
+              ? "ring-2 ring-indigo-400/70 ring-offset-2 ring-offset-slate-50 dark:ring-indigo-500/60 dark:ring-offset-slate-950"
+              : ""
+          }`}
+        >
+          <PageCard title={editing.id ? "Edit User" : "Add New User"}>
+            <UserForm
+              initialValues={editing}
+              onCancel={() => setEditing(null)}
+              onSubmit={(values) => {
+                const payload = { ...values };
+                if (!payload.password) delete payload.password;
+                // Clear managerId if not an employee
+                if (payload.role !== "employee") payload.managerId = null;
 
-              if (editing.id || editing._id) {
-                dispatch(updateUserAsync({ id: editing.id || editing._id, ...payload }))
-                  .unwrap()
-                  .then(() => {
-                    setEditing(null);
-                    setUpdatedUserId(editing.id || editing._id);
-                    toast.success("User updated successfully");
-                  })
-                  .catch((err) => toast.error(`Failed to update user: ${err.message || err}`));
-              } else {
-                dispatch(createUserAsync(payload))
-                  .unwrap()
-                  .then((res) => {
-                    setEditing(null);
-                    setUpdatedUserId(res.id || res._id);
-                    toast.success("User created successfully");
-                  })
-                  .catch((err) => toast.error(`Failed to create user: ${err.message || err}`));
-              }
-            }}
-          />
-        </PageCard>
+                if (editing.id || editing._id) {
+                  dispatch(updateUserAsync({ id: editing.id || editing._id, ...payload }))
+                    .unwrap()
+                    .then(() => {
+                      setEditing(null);
+                      setUpdatedUserId(editing.id || editing._id);
+                      toast.success("User updated successfully");
+                    })
+                    .catch((err) => toast.error(`Failed to update user: ${err.message || err}`));
+                } else {
+                  dispatch(createUserAsync(payload))
+                    .unwrap()
+                    .then((res) => {
+                      setEditing(null);
+                      setUpdatedUserId(res.id || res._id);
+                      toast.success("User created successfully");
+                    })
+                    .catch((err) => toast.error(`Failed to create user: ${err.message || err}`));
+                }
+              }}
+            />
+          </PageCard>
+        </div>
       )}
     </div>
   );
