@@ -6,14 +6,11 @@ import {
   markNotificationReadAsync,
   deleteNotificationAsync,
   clearNotificationsAsync,
-  markAllWorkspaceNotificationsReadAsync,
-  purgeWorkspaceNotificationsAsync,
 } from "../../store/workSlice";
 import { selectResolvedNotifications } from "../../store/selectors";
 import { EmptyState, PageCard, PageHeader, Button, Badge, ConfirmDialog } from "../common/components/UI";
-import { isAdmin } from "../../lib/permissions";
 import {
-  Bell, BellRing, Check, CheckCheck, Trash2,
+  Bell, BellRing, Check, Trash2,
   UserCheck, MoveRight, FolderKanban, MessageSquare,
   AlertTriangle, Info, CheckCircle2, ExternalLink,
 } from "lucide-react";
@@ -95,12 +92,9 @@ export default function NotificationsPage() {
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
   const notifications = useSelector(selectResolvedNotifications);
-  const currentUser = useSelector((state) => state.auth.user);
-  const [confirmClear, setConfirmClear] = useState(false);
   const [confirmClearMine, setConfirmClearMine] = useState(false);
   const [bulkBusy, setBulkBusy] = useState("");
   const [deletingId, setDeletingId] = useState("");
-  const adminView = isAdmin(currentUser);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -125,17 +119,6 @@ export default function NotificationsPage() {
     if (target) navigate(target);
   };
 
-  const markWorkspaceRead = async () => {
-    setBulkBusy("read");
-    const result = await dispatch(markAllWorkspaceNotificationsReadAsync());
-    setBulkBusy("");
-    if (result.error) {
-      toast.error(result.payload || "Failed to mark workspace notifications read");
-      return;
-    }
-    toast.success("All workspace notifications marked as read");
-  };
-
   const clearMyNotifications = async () => {
     setBulkBusy("mine");
     const result = await dispatch(clearNotificationsAsync());
@@ -146,18 +129,6 @@ export default function NotificationsPage() {
       return;
     }
     toast.success("Your notifications were cleared");
-  };
-
-  const clearWorkspaceNotifications = async () => {
-    setBulkBusy("clear");
-    const result = await dispatch(purgeWorkspaceNotificationsAsync());
-    setBulkBusy("");
-    setConfirmClear(false);
-    if (result.error) {
-      toast.error(result.payload || "Failed to clear workspace notifications");
-      return;
-    }
-    toast.success("All workspace notifications cleared");
   };
 
   const deleteNotification = async (item) => {
@@ -192,27 +163,6 @@ export default function NotificationsPage() {
               >
                 <Trash2 className="h-4 w-4" />
                 {bulkBusy === "mine" ? "Clearing..." : "Clear mine"}
-              </Button>
-            )}
-            {adminView && unreadCount > 0 && (
-              <Button
-                variant="secondary"
-                onClick={markWorkspaceRead}
-                disabled={Boolean(bulkBusy)}
-              >
-                <CheckCheck className="h-4 w-4" />
-                {bulkBusy === "read" ? "Marking..." : "Mark all read"}
-              </Button>
-            )}
-            {adminView && notifications.length > 0 && (
-              <Button
-                variant="ghost"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-                onClick={() => setConfirmClear(true)}
-                disabled={Boolean(bulkBusy)}
-              >
-                <Trash2 className="h-4 w-4" />
-                {bulkBusy === "clear" ? "Clearing..." : "Clear all"}
               </Button>
             )}
           </div>
@@ -341,13 +291,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </PageCard>
-      <ConfirmDialog
-        open={confirmClear}
-        title="Clear all workspace notifications?"
-        message="This permanently deletes every notification for every user in the workspace. This hard-delete action cannot be undone."
-        onCancel={() => setConfirmClear(false)}
-        onConfirm={clearWorkspaceNotifications}
-      />
       <ConfirmDialog
         open={confirmClearMine}
         title="Clear your notifications?"

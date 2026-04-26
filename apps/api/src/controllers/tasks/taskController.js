@@ -5,7 +5,7 @@ import Notification from "../../models/Notification.js";
 import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
+import { canUpdateTask, canMoveTask, canArchiveTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
 import {
   deleteCloudinaryAsset,
   getCloudinaryDownloadUrl,
@@ -442,7 +442,7 @@ export const removeAttachment = async (req, res, next) => {
   }
 };
 
-export const deleteTask = async (req, res, next) => {
+export const archiveTask = async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -450,8 +450,8 @@ export const deleteTask = async (req, res, next) => {
     let project = null;
     if (task.projectId) project = await Project.findById(task.projectId);
 
-    if (!canDeleteTask(req.user, task, project)) {
-      return res.status(403).json({ message: "You do not have permission to delete this task." });
+    if (!canArchiveTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to archive this task." });
     }
 
     const archivedTask = await Task.findByIdAndUpdate(req.params.id, {
@@ -473,7 +473,7 @@ export const deleteTask = async (req, res, next) => {
         richText: `${req.user.name} archived task "${task.title}"`,
       },
     });
-    emitToAll("task:deleted", {
+    emitToAll("task:archived", {
       id: req.params.id,
       task: archivedTask.toJSON(),
       archived: true,
@@ -515,7 +515,7 @@ export const bulkUpdateTasks = async (req, res, next) => {
       const project = task.projectId ? await Project.findById(task.projectId) : null;
       const requiresDelete = archived === true;
       const allowed = requiresDelete
-        ? canDeleteTask(req.user, task, project)
+        ? canArchiveTask(req.user, task, project)
         : canUpdateTask(req.user, task, project);
       if (!allowed) continue;
 
@@ -554,7 +554,7 @@ export const bulkUpdateTasks = async (req, res, next) => {
 
     updated.forEach((task) => {
       emitToAll(
-        archived === true ? "task:deleted" : "task:updated",
+        archived === true ? "task:archived" : "task:updated",
         archived === true
           ? { id: task.id, task: task.toJSON(), archived: true, projectId: task.projectId?.toString() }
           : task.toJSON()

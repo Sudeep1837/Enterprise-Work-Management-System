@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { PageHeader, PageCard, Badge, Button, ConfirmDialog } from "../common/components/UI";
 import { InsightCard, DonutChartCard, MiniTrendChart, StripMetric } from "../common/components/Analytics";
-import { clearTelemetryFeedAsync, purgeTelemetryAsync } from "../../store/workSlice";
+import { clearTelemetryFeedAsync } from "../../store/workSlice";
 import {
   selectDashboardMetrics,
   selectWeeklyTrend,
@@ -173,9 +173,7 @@ export default function DashboardPage() {
   const telemetry      = useSelector((state) => state.work.telemetry || []);
   const authUser       = useSelector((state) => state.auth.user);
   const [confirmTelemetryClear, setConfirmTelemetryClear] = useState(false);
-  const [confirmTelemetryPurge, setConfirmTelemetryPurge] = useState(false);
   const [clearingTelemetry, setClearingTelemetry] = useState(false);
-  const [purgingTelemetry, setPurgingTelemetry] = useState(false);
 
   const role           = authUser?.role || "employee";
   const isAdmin        = role === "admin";
@@ -196,18 +194,6 @@ export default function DashboardPage() {
       return;
     }
     toast.success("Your telemetry feed was cleared");
-  };
-
-  const purgeTelemetry = async () => {
-    setPurgingTelemetry(true);
-    const result = await dispatch(purgeTelemetryAsync());
-    setPurgingTelemetry(false);
-    setConfirmTelemetryPurge(false);
-    if (result.error) {
-      toast.error(result.payload || "Failed to clear workspace telemetry");
-      return;
-    }
-    toast.success("Workspace telemetry purged");
   };
 
   return (
@@ -385,22 +371,11 @@ export default function DashboardPage() {
                   <Button
                     variant="secondary"
                     onClick={() => setConfirmTelemetryClear(true)}
-                    disabled={clearingTelemetry || purgingTelemetry}
+                    disabled={clearingTelemetry}
                   >
                     <Trash2 className="h-4 w-4" />
                     {clearingTelemetry ? "Clearing..." : "Clear mine"}
                   </Button>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-                      onClick={() => setConfirmTelemetryPurge(true)}
-                      disabled={purgingTelemetry || clearingTelemetry}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {purgingTelemetry ? "Purging..." : "Admin purge"}
-                    </Button>
-                  )}
                 </div>
               ) : null
             }
@@ -477,14 +452,6 @@ export default function DashboardPage() {
         onCancel={() => setConfirmTelemetryClear(false)}
         onConfirm={clearTelemetry}
       />
-      <ConfirmDialog
-        open={confirmTelemetryPurge}
-        title="Purge workspace telemetry?"
-        message="This permanently deletes the operational telemetry feed for the workspace. The dashboard and activity feed will clear for all users, and this hard-delete action cannot be undone."
-        onCancel={() => setConfirmTelemetryPurge(false)}
-        onConfirm={purgeTelemetry}
-      />
-
       {(isAdmin || isManager) && workload.length > 0 && (
         <PageCard title="Team Workload Distribution" subtitle="Active task load per member">
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

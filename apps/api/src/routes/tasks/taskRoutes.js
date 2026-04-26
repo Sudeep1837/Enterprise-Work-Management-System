@@ -4,7 +4,7 @@ import {
   getTaskById,
   createTask,
   updateTask,
-  deleteTask,
+  archiveTask,
   moveTaskStatus,
   addComment,
   bulkUpdateTasks,
@@ -25,7 +25,7 @@ router.patch("/bulk", bulkUpdateTasks);
 router.post("/:id/attachments", taskAttachmentUpload.single("file"), addAttachment);
 router.delete("/:id/attachments/:attachmentId", removeAttachment);
 router.put("/:id", updateTask);
-router.delete("/:id", deleteTask);
+router.delete("/:id", archiveTask);
 router.put("/:id/status", moveTaskStatus);
 router.post("/:id/comments", addComment);
 

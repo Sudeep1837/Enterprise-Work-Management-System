@@ -128,12 +128,12 @@ export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ i
   }
 });
 
-export const deleteTaskAsync = createAsyncThunk("work/deleteTask", async (id, { rejectWithValue }) => {
+export const archiveTaskAsync = createAsyncThunk("work/archiveTask", async (id, { rejectWithValue }) => {
   try {
     const response = await apiClient.delete(`/tasks/${id}`);
     return response.data || { id };
   } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to delete task"));
+    return rejectWithValue(getApiErrorMessage(err, "Failed to archive task"));
   }
 });
 
@@ -196,24 +196,6 @@ export const clearNotificationsAsync = createAsyncThunk("work/clearNotifications
     return [];
   } catch (err) {
     return rejectWithValue(getApiErrorMessage(err, "Failed to clear notifications"));
-  }
-});
-
-export const markAllWorkspaceNotificationsReadAsync = createAsyncThunk("work/markAllWorkspaceNotificationsRead", async (_, { rejectWithValue }) => {
-  try {
-    const response = await apiClient.put("/notifications/workspace/read-all");
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to mark workspace notifications read"));
-  }
-});
-
-export const purgeWorkspaceNotificationsAsync = createAsyncThunk("work/purgeWorkspaceNotifications", async (_, { rejectWithValue }) => {
-  try {
-    const response = await apiClient.delete("/notifications/workspace/purge");
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to clear workspace notifications"));
   }
 });
 
@@ -307,24 +289,6 @@ export const clearTelemetryFeedAsync = createAsyncThunk("work/clearTelemetryFeed
     return response.data;
   } catch (err) {
     return rejectWithValue(getApiErrorMessage(err, "Failed to clear your telemetry feed"));
-  }
-});
-
-export const purgeActivityLogAsync = createAsyncThunk("work/purgeActivityLog", async (_, { rejectWithValue }) => {
-  try {
-    const response = await apiClient.delete("/activity/purge");
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to clear activity log"));
-  }
-});
-
-export const purgeTelemetryAsync = createAsyncThunk("work/purgeTelemetry", async (_, { rejectWithValue }) => {
-  try {
-    const response = await apiClient.delete("/activity/telemetry/purge");
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to clear workspace telemetry"));
   }
 });
 
@@ -435,13 +399,6 @@ const workSlice = createSlice({
     clearTelemetryFeedSync: (state) => {
       state.telemetry = [];
     },
-    socketActivityPurged: (state) => {
-      state.activity = [];
-      state.telemetry = [];
-    },
-    socketTelemetryPurged: (state) => {
-      state.telemetry = [];
-    },
     // EC12: cross-session user sync — emitted by userController after admin update
     socketUserUpdated: (state, action) => {
       const uid = action.payload.id || action.payload._id?.toString();
@@ -463,9 +420,6 @@ const workSlice = createSlice({
     },
     socketNotificationsAllRead: (state) => {
       state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
-    },
-    socketNotificationsPurged: (state) => {
-      state.notifications = [];
     },
   },
   extraReducers: (builder) => {
@@ -552,7 +506,7 @@ const workSlice = createSlice({
         const task = state.tasks.find((t) => t.id === action.payload.id);
         if (task) Object.assign(task, action.payload);
       })
-      .addCase(deleteTaskAsync.fulfilled, (state, action) => {
+      .addCase(archiveTaskAsync.fulfilled, (state, action) => {
         const payload = action.payload || {};
         const taskId = typeof payload === "string" ? payload : payload.id;
         state.tasks = state.tasks.filter((t) => (t.id || t._id?.toString()) !== taskId);
@@ -637,12 +591,6 @@ const workSlice = createSlice({
       .addCase(markAllNotificationsReadAsync.fulfilled, (state) => {
         state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
       })
-      .addCase(markAllWorkspaceNotificationsReadAsync.fulfilled, (state) => {
-        state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
-      })
-      .addCase(purgeWorkspaceNotificationsAsync.fulfilled, (state) => {
-        state.notifications = [];
-      })
       // Activity
       .addCase(fetchActivity.pending, (state) => {
         state.activityStatus = "loading";
@@ -675,13 +623,6 @@ const workSlice = createSlice({
       })
       .addCase(clearTelemetryFeedAsync.fulfilled, (state) => {
         state.telemetry = [];
-      })
-      .addCase(purgeActivityLogAsync.fulfilled, (state) => {
-        state.activity = [];
-        state.telemetry = [];
-      })
-      .addCase(purgeTelemetryAsync.fulfilled, (state) => {
-        state.telemetry = [];
       });
   },
 });
@@ -702,9 +643,6 @@ export const {
   clearTelemetryFeedSync,
   clearNotificationsSync,
   socketNotificationsAllRead,
-  socketNotificationsPurged,
-  socketActivityPurged,
-  socketTelemetryPurged,
 } = workSlice.actions;
 
 export default workSlice.reducer;

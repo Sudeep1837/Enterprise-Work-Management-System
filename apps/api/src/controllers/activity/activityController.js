@@ -1,5 +1,5 @@
 import ActivityLog from "../../models/ActivityLog.js";
-import { emitToAll, emitToUser } from "../../sockets/socketServer.js";
+import { emitToUser } from "../../sockets/socketServer.js";
 
 import User from "../../models/User.js";
 
@@ -66,28 +66,6 @@ export const clearMyTelemetryFeed = async (req, res, next) => {
     await User.findByIdAndUpdate(req.user.sub, { telemetryClearedAt: new Date() });
     emitToUser(req.user.sub, "telemetry:cleared", { scope: "personal" });
     res.json({ success: true, scope: "personal" });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const purgeActivityFeed = async (res, eventName, source) => {
-  const result = await ActivityLog.deleteMany({});
-  emitToAll(eventName, { source });
-  res.json({ success: true, deletedCount: result.deletedCount || 0 });
-};
-
-export const purgeActivities = async (req, res, next) => {
-  try {
-    await purgeActivityFeed(res, "activity:purged", "activity-log");
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const purgeTelemetry = async (req, res, next) => {
-  try {
-    await purgeActivityFeed(res, "telemetry:purged", "workspace-telemetry");
   } catch (error) {
     next(error);
   }

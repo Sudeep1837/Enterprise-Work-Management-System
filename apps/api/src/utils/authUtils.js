@@ -102,7 +102,7 @@ export const canViewProject = (user, project) => {
 
 
 // ─── Task Permissions ─────────────────────────────────────────────────────────
-export const canDeleteTask = (user, task, project) => {
+export const canArchiveTask = (user, task, project) => {
   if (isAdmin(user)) return true;
   if (isManager(user)) {
     // Manager owns the project
@@ -110,7 +110,7 @@ export const canDeleteTask = (user, task, project) => {
     // Manager is the reporter of the task
     if (task && task.reporterId && task.reporterId.toString() === user.sub) return true;
   }
-  // Employees cannot delete tasks
+  // Employees cannot archive tasks
   return false;
 };
 

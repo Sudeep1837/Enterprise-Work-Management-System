@@ -1,5 +1,5 @@
 import Notification from "../../models/Notification.js";
-import { emitToAll, emitToUser } from "../../sockets/socketServer.js";
+import { emitToUser } from "../../sockets/socketServer.js";
 
 export const getNotifications = async (req, res, next) => {
   try {
@@ -62,29 +62,6 @@ export const deleteNotification = async (req, res, next) => {
 
     emitToUser(req.user.sub, "notification:deleted", { id: req.params.id });
     return res.json({ success: true, id: req.params.id });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const markAllWorkspaceNotificationsRead = async (req, res, next) => {
-  try {
-    const result = await Notification.updateMany(
-      { read: false },
-      { $set: { read: true } }
-    );
-    emitToAll("notification:all-read", { scope: "workspace" });
-    res.json({ success: true, modifiedCount: result.modifiedCount || 0 });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const purgeAllWorkspaceNotifications = async (req, res, next) => {
-  try {
-    const result = await Notification.deleteMany({});
-    emitToAll("notification:purged", { scope: "workspace" });
-    res.json({ success: true, deletedCount: result.deletedCount || 0 });
   } catch (error) {
     next(error);
   }

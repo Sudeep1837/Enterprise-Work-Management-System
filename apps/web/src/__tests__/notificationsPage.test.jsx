@@ -63,9 +63,9 @@ describe("NotificationsPage", () => {
     expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
   });
 
-  test("renders rich notification content and lets admins mark all items as read", async () => {
+  test("renders rich notification content and lets users clear their own notifications", async () => {
     const user = userEvent.setup();
-    apiClient.put.mockResolvedValue({ data: {} });
+    apiClient.delete.mockResolvedValue({ data: { success: true } });
 
     renderWithProviders(<NotificationsPage />, {
       preloadedState: {
@@ -99,10 +99,15 @@ describe("NotificationsPage", () => {
     expect(screen.getByText("Asha Admin")).toBeInTheDocument();
     expect(screen.getByText("Launch Portal")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /mark all read/i }));
+    expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
 
-    expect(await screen.findByText(/all caught up/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /mark all read/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /clear mine/i }));
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/all caught up/i).length).toBeGreaterThan(0);
+    });
+    expect(apiClient.delete).toHaveBeenCalledWith("/notifications/clear");
   });
 
   test("renders notification actor names from current user identity", () => {

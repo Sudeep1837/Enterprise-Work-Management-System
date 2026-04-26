@@ -110,7 +110,7 @@ export const canViewProject = (user, project) => {
   return false;
 };
 
-export const canDeleteTask = (user, task, project) => {
+export const canArchiveTask = (user, task, project) => {
   if (!user || !task) return false;
   if (isAdmin(user)) return true;
   if (isManager(user)) {

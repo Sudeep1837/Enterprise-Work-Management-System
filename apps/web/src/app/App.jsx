@@ -10,8 +10,7 @@ import {
   socketCommentAdded, socketNotificationCreated, socketActivityCreated,
   socketUserUpdated,
   clearActivityFeedSync, clearNotificationsSync, clearTelemetryFeedSync, socketNotificationDeleted,
-  socketNotificationsAllRead, socketNotificationsPurged,
-  socketActivityPurged, socketTelemetryPurged,
+  socketNotificationsAllRead,
 } from "../store/workSlice";
 import { fetchMeThunk } from "../store/authSlice";
 import { connectSocket, disconnectSocket } from "../services/socketClient";
@@ -74,8 +73,7 @@ function App() {
     socket.on("task:updated", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("task:moved", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("comment:added", (comment) => dispatch(socketCommentAdded(comment)));
-    // EC12: task:deleted was emitted by backend but never listened to — now handled
-    socket.on("task:deleted", (payload) => dispatch(socketTaskDeleted(payload)));
+    socket.on("task:archived", (payload) => dispatch(socketTaskDeleted(payload)));
 
     socket.on("notification:created", (payload) => {
       dispatch(socketNotificationCreated(payload));
@@ -89,7 +87,6 @@ function App() {
     socket.on("notification:all-read", () => dispatch(socketNotificationsAllRead()));
     socket.on("notification:deleted", (payload) => dispatch(socketNotificationDeleted(payload)));
     socket.on("notifications:cleared", () => dispatch(clearNotificationsSync()));
-    socket.on("notification:purged", () => dispatch(socketNotificationsPurged()));
 
     socket.on("activity:created", (payload) => {
       const currentUser = currentUserRef.current;
@@ -117,9 +114,7 @@ function App() {
 
     // EC12: user:updated — sync role/team/active state across all sessions
     socket.on("activity:cleared", () => dispatch(clearActivityFeedSync()));
-    socket.on("activity:purged", () => dispatch(socketActivityPurged()));
     socket.on("telemetry:cleared", () => dispatch(clearTelemetryFeedSync()));
-    socket.on("telemetry:purged", () => dispatch(socketTelemetryPurged()));
     socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
     return () => disconnectSocket();

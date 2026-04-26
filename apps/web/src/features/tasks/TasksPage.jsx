@@ -7,13 +7,14 @@ import { useRevealFocus } from "../../hooks/useRevealFocus";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
-import { deleteTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
+import { archiveTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
 import { selectDashboardMetrics } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
+import { buildTaskMutationPayload } from "./utils/taskPayload";
 import { Archive, CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
-import { canDeleteTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
+import { canArchiveTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
@@ -26,7 +27,7 @@ export default function TasksPage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updatedAt");
   const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
+  const [archiving, setArchiving] = useState(null);
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkArchive, setBulkArchive] = useState(false);
@@ -65,16 +66,17 @@ export default function TasksPage() {
   }, [newTaskId]);
 
   const saveTask = async (values) => {
+    const payload = buildTaskMutationPayload(values);
     if (editing?.id || editing?._id) {
       const id = editing.id || editing._id;
-      const result = await dispatch(updateTaskAsync({ ...editing, ...values, id }));
+      const result = await dispatch(updateTaskAsync({ id, ...payload }));
       if (result.error) {
         toast.error(result.payload || "Failed to update task");
         return;
       }
       toast.success("Task updated successfully");
     } else {
-      const result = await dispatch(createTask({ ...values }));
+      const result = await dispatch(createTask(payload));
       if (!result.error) {
         const created = result.payload;
         const id = created?.id || created?._id?.toString();
@@ -123,8 +125,20 @@ export default function TasksPage() {
       toast.error(result.payload || "Bulk update failed");
       return;
     }
-    toast.success(`${result.payload.length} task${result.payload.length === 1 ? "" : "s"} updated`);
+    const actionLabel = payload.archived ? "archived" : "updated";
+    toast.success(`${result.payload.length} task${result.payload.length === 1 ? "" : "s"} ${actionLabel}`);
     clearSelection();
+  };
+
+  const archiveTask = async () => {
+    if (!archiving) return;
+    const result = await dispatch(archiveTaskAsync(archiving.id || archiving._id));
+    setArchiving(null);
+    if (result.error) {
+      toast.error(result.payload || "Failed to archive task");
+      return;
+    }
+    toast.success("Task archived");
   };
 
   return (
@@ -279,7 +293,7 @@ export default function TasksPage() {
                 const isNew = taskId === newTaskId;
                 const project = getProject(task);
                 const userCanEdit = canUpdateTask(currentUser, task, project);
-                const userCanDelete = canDeleteTask(currentUser, task, project);
+                const userCanArchive = canArchiveTask(currentUser, task, project);
 
                 return (
                   <motion.article
@@ -378,16 +392,16 @@ export default function TasksPage() {
                         </span>
                       )}
 
-                      {userCanDelete && (
+                      {userCanArchive && (
                         <Button
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleting(task);
+                            setArchiving(task);
                           }}
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                          className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-500/10"
                         >
-                          Delete
+                          Archive
                         </Button>
                       )}
                     </div>
@@ -400,14 +414,11 @@ export default function TasksPage() {
       </PageCard>
 
       <ConfirmDialog
-        open={Boolean(deleting)}
-        title="Delete task?"
+        open={Boolean(archiving)}
+        title="Archive task?"
         message="This will archive the task and keep historical reporting intact."
-        onCancel={() => setDeleting(null)}
-        onConfirm={() => {
-          dispatch(deleteTaskAsync(deleting.id || deleting._id));
-          setDeleting(null);
-        }}
+        onCancel={() => setArchiving(null)}
+        onConfirm={archiveTask}
       />
       <ConfirmDialog
         open={bulkArchive}

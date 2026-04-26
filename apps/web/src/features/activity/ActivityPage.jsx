@@ -2,8 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { PageHeader, PageCard, EmptyState, Button, ConfirmDialog } from "../common/components/UI";
-import { clearActivityFeedAsync, purgeActivityLogAsync } from "../../store/workSlice";
-import { isAdmin } from "../../lib/permissions";
+import { clearActivityFeedAsync } from "../../store/workSlice";
 import { Activity, User, Briefcase, CheckSquare, Clock, Filter, X, Archive, Trash2 } from "lucide-react";
 
 function relativeTime(dateStr) {
@@ -22,15 +21,11 @@ function relativeTime(dateStr) {
 export default function ActivityPage() {
   const dispatch = useDispatch();
   const activities = useSelector((state) => state.work.activity || []);
-  const currentUser = useSelector((state) => state.auth.user);
   
   const [filterType, setFilterType] = useState("");
   const [filterAction, setFilterAction] = useState("");
   const [confirmClearMine, setConfirmClearMine] = useState(false);
-  const [confirmPurge, setConfirmPurge] = useState(false);
   const [clearingMine, setClearingMine] = useState(false);
-  const [purging, setPurging] = useState(false);
-  const adminView = isAdmin(currentUser);
 
   const filtered = useMemo(() => {
     return activities.filter((item) => {
@@ -75,20 +70,6 @@ export default function ActivityPage() {
     toast.success("Your activity feed was cleared");
   };
 
-  const purgeActivityLog = async () => {
-    setPurging(true);
-    const result = await dispatch(purgeActivityLogAsync());
-    setPurging(false);
-    setConfirmPurge(false);
-    if (result.error) {
-      toast.error(result.payload || "Failed to clear activity log");
-      return;
-    }
-    setFilterType("");
-    setFilterAction("");
-    toast.success("Activity log purged");
-  };
-
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
@@ -101,22 +82,11 @@ export default function ActivityPage() {
               <Button
                 variant="secondary"
                 onClick={() => setConfirmClearMine(true)}
-                disabled={clearingMine || purging}
+                disabled={clearingMine}
               >
                 <Trash2 className="h-4 w-4" />
                 {clearingMine ? "Clearing..." : "Clear my feed"}
               </Button>
-              {adminView && (
-                <Button
-                  variant="ghost"
-                  className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-                  onClick={() => setConfirmPurge(true)}
-                  disabled={purging || clearingMine}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {purging ? "Purging..." : "Admin purge"}
-                </Button>
-              )}
             </div>
           ) : null
         }
@@ -215,13 +185,6 @@ export default function ActivityPage() {
         message="This hides the current activity history from your Activity Log only. Other users' activity feeds are not affected."
         onCancel={() => setConfirmClearMine(false)}
         onConfirm={clearMyActivityLog}
-      />
-      <ConfirmDialog
-        open={confirmPurge}
-        title="Purge all activity log entries?"
-        message="This permanently deletes the workspace audit activity feed from MongoDB. This hard-delete action affects all users and cannot be undone."
-        onCancel={() => setConfirmPurge(false)}
-        onConfirm={purgeActivityLog}
       />
     </div>
   );
