@@ -7,8 +7,8 @@ The application is built as a JavaScript-only ESM monorepo with a React + Vite f
 ## Live Links
 
 - Frontend: https://enterprise-work-management-system-w.vercel.app
-- Backend: Render deployment URL: **TODO: add deployed Render service URL**
-- Health check: `https://<your-render-service>.onrender.com/api/health`
+- Backend: https://enterprise-work-management-system.onrender.com
+- Health check: https://enterprise-work-management-system.onrender.com/api/health
 
 ## Key Features
 
@@ -96,6 +96,48 @@ The application is built as a JavaScript-only ESM monorepo with a React + Vite f
 - Lucide React
 - Jest
 - React Testing Library
+
+## Frontend Libraries Used
+
+The frontend app in `apps/web` uses these primary runtime libraries:
+
+| Library | Purpose |
+| --- | --- |
+| `react` | Component-based UI rendering. |
+| `react-dom` | React DOM rendering entry point. |
+| `@vitejs/plugin-react` | React support for Vite during development/build tooling. |
+| `@reduxjs/toolkit` | Redux store setup, slices, reducers, and async thunks. |
+| `react-redux` | React bindings for Redux state and dispatch. |
+| `react-router-dom` | Client-side routing, nested layouts, protected routes, and navigation. |
+| `axios` | HTTP client for backend API requests. |
+| `socket.io-client` | Realtime WebSocket communication with the backend. |
+| `tailwindcss` | Utility-first styling and responsive UI design. |
+| `react-hook-form` | Form state management and submission handling. |
+| `@hookform/resolvers` | Validation resolver integration for React Hook Form. |
+| `yup` | Form validation schemas. |
+| `@dnd-kit/core` | Drag-and-drop foundation for the Kanban board. |
+| `@dnd-kit/sortable` | Sortable drag-and-drop behavior for Kanban interactions. |
+| `recharts` | Dashboard and reports data visualizations. |
+| `framer-motion` | UI transitions, page animations, modals, and polished motion. |
+| `react-toastify` | Toast alerts for success, error, and realtime feedback. |
+| `lucide-react` | Icon system used across navigation, buttons, cards, and actions. |
+
+Frontend testing/dev libraries include:
+
+| Library | Purpose |
+| --- | --- |
+| `jest` | JavaScript test runner. |
+| `jest-environment-jsdom` | Browser-like DOM environment for tests. |
+| `@testing-library/react` | React component testing utilities. |
+| `@testing-library/jest-dom` | Custom DOM matchers for Jest assertions. |
+| `@testing-library/user-event` | User-focused interaction testing. |
+| `@swc/jest` | Jest transform for modern JavaScript and JSX. |
+| `eslint` | Static analysis and code quality checks. |
+| `eslint-plugin-react-hooks` | React Hooks linting rules. |
+| `eslint-config-prettier` | Prevents ESLint and Prettier formatting conflicts. |
+| `postcss` | CSS processing pipeline used by Tailwind. |
+| `autoprefixer` | Vendor prefix handling for CSS. |
+| `identity-obj-proxy` | CSS module/style mock support in tests. |
 
 ### Backend
 
@@ -244,7 +286,7 @@ VITE_SOCKET_URL=http://localhost:5000
 
 Production notes:
 
-- Set both values to the deployed backend origin, for example `https://<your-render-service>.onrender.com`.
+- Set both values to the deployed backend origin: `https://enterprise-work-management-system.onrender.com`.
 - The frontend automatically appends `/api` for REST calls when needed.
 
 ## Demo Credentials
@@ -323,6 +365,9 @@ The frontend is deployed from `apps/web`.
 
 The backend is designed to deploy from `apps/api`.
 
+- Live backend: https://enterprise-work-management-system.onrender.com
+- Health check: https://enterprise-work-management-system.onrender.com/api/health
+
 Recommended Render settings:
 
 - Root directory: `apps/api`
@@ -349,24 +394,60 @@ GET /api/health
 
 ## Screenshots
 
-Screenshots are not currently committed in the repository.
-
-Suggested README assets to add before final submission:
+The screenshots below represent the deployed application flows provided for submission. Save the supplied screenshots under `docs/screenshots/` using these filenames to render the gallery directly in GitHub:
 
 ```text
 docs/screenshots/landing.png
-docs/screenshots/dashboard.png
-docs/screenshots/tasks.png
-docs/screenshots/kanban.png
-docs/screenshots/reports.png
+docs/screenshots/profile.png
 docs/screenshots/settings.png
+docs/screenshots/notifications.png
+docs/screenshots/activity.png
+docs/screenshots/reports.png
+docs/screenshots/kanban.png
+docs/screenshots/dashboard.png
+docs/screenshots/projects.png
+docs/screenshots/tasks.png
 ```
 
-Then reference them here:
+### Landing Page
 
-```md
-![Dashboard](docs/screenshots/dashboard.png)
-```
+![Landing page](docs/screenshots/landing.png)
+
+### Dashboard
+
+![Dashboard command center](docs/screenshots/dashboard.png)
+
+### Projects
+
+![Projects page](docs/screenshots/projects.png)
+
+### Tasks
+
+![Task execution page](docs/screenshots/tasks.png)
+
+### Kanban Board
+
+![Kanban board](docs/screenshots/kanban.png)
+
+### Reports and Analytics
+
+![Reports analytics page](docs/screenshots/reports.png)
+
+### Activity Log
+
+![Activity log](docs/screenshots/activity.png)
+
+### Notifications
+
+![Notifications page](docs/screenshots/notifications.png)
+
+### Settings
+
+![Workspace settings](docs/screenshots/settings.png)
+
+### Profile
+
+![Profile page](docs/screenshots/profile.png)
 
 ## Assignment Criteria Mapping
 
@@ -376,7 +457,7 @@ Then reference them here:
 | Code Quality & Best Practices | Satisfied | ESM modules, feature-based frontend structure, Express route/controller/service layering, ESLint/Prettier, scoped permissions. |
 | Functionalities & Features | Satisfied | Auth, roles, dashboard, projects, tasks, Kanban, users, reports, notifications, settings, comments, attachments. |
 | State Management & Interactivity | Satisfied | Redux Toolkit async thunks/selectors, Socket.IO realtime events, React Router guards, interactive forms and drag/drop. |
-| Deployment & Documentation | Mostly satisfied | Vercel frontend deployed, backend Render-ready/deployed per project context, README now documents setup/deployment. Backend URL should be filled in. |
+| Deployment & Documentation | Satisfied | Vercel frontend and Render backend links are documented, with setup, environment, testing, and deployment notes. |
 | JWT Authentication | Satisfied | Express auth routes, JWT utilities, protected frontend routes. |
 | Admin/Manager/Employee Roles | Satisfied | Backend permission helpers and frontend route/action guards. |
 | Dashboard Metrics | Satisfied | Dashboard selectors and analytics components. |
@@ -387,22 +468,20 @@ Then reference them here:
 | Notifications/WebSockets | Satisfied | Socket.IO realtime events, notification UI, toast alerts. |
 | Settings/Profile | Satisfied | Theme toggle, profile edit, profile image, password change. |
 | Jest + React Testing Library | Satisfied | Jest config, RTL setup, 15 test files, 31 passing tests. |
-| Screenshots | Pending manual addition | No committed app screenshots found. Placeholder section included. |
+| Screenshots | Satisfied when image files are committed | README includes a screenshot gallery mapped to the provided app screenshots. |
 
 ## Known Limitations and Future Improvements
 
-- Add committed screenshots before final evaluator submission.
-- Fill in the deployed Render backend URL in this README.
+- Commit the provided screenshot files under `docs/screenshots/` so the README gallery renders on GitHub.
 - API test coverage is lighter than frontend test coverage; future work could add backend integration tests for auth, RBAC, CORS, and task workflows.
 - The frontend production bundle currently emits a large chunk warning; code-splitting can be tuned further if required.
 - Admin/manager route visibility is implemented, while the highest-value future refinement would be documenting exact RBAC rules in a dedicated policy file.
 
 ## Submission Readiness
 
-The project is functionally strong and aligned with the assignment requirements. It is ready with minor manual documentation completion:
+The project is functionally strong and aligned with the assignment requirements. It is ready for submission after committing the provided screenshot image files:
 
-1. Add the Render backend URL.
-2. Add screenshots.
-3. Ensure deployed frontend environment variables point to the deployed backend:
+1. Save and commit screenshots under `docs/screenshots/` using the filenames listed above.
+2. Ensure deployed frontend environment variables point to the deployed backend:
    - `VITE_API_URL`
    - `VITE_SOCKET_URL`
