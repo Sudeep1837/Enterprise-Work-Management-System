@@ -442,24 +442,3 @@ The screenshots below show the deployed application flows and are stored under `
 
 
 
-## Known Limitations and Future Improvements
-
-- API test coverage is lighter than frontend test coverage; future work could add backend integration tests for auth, RBAC, CORS, and task workflows.
-- The frontend production bundle currently emits a large chunk warning; code-splitting can be tuned further if required.
-- Admin/manager route visibility is implemented, while a dedicated RBAC policy document would make the permission rules easier to audit and maintain.
-
-## Submission Readiness
-
-The project is functionally strong, deployed, documented, and ready for submission.
-
-Final checks before sharing the repository:
-
-1. Confirm all screenshots are committed under `docs/screenshots/` using the filenames referenced in this README.
-2. Ensure deployed frontend environment variables point to the deployed backend:
-   - `VITE_API_URL`
-   - `VITE_SOCKET_URL`
-3. Verify the backend health route returns a successful response:
-
-```text
-GET /api/health
-```
