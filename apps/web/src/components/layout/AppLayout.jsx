@@ -423,18 +423,23 @@ export default function AppLayout() {
 
               <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-slate-200 dark:lg:bg-slate-700" aria-hidden="true" />
 
-              {/* Avatar */}
-              <div className="flex items-center gap-3 p-1">
+              {/* Profile entry */}
+              <Link
+                to="/profile"
+                aria-label={`Open profile for ${user?.name || "current user"}`}
+                title="Open profile"
+                className="group flex items-center gap-3 rounded-2xl border border-transparent p-1.5 pr-2.5 transition-all hover:border-slate-200 hover:bg-white/80 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:border-white/10 dark:hover:bg-white/5 dark:focus-visible:ring-offset-slate-950"
+              >
                 <Avatar name={user?.name} src={user?.profileImageUrl} size="sm" alt={`${user?.name || "User"} avatar`} />
                 <div className="hidden lg:flex lg:flex-col lg:items-start text-sm">
-                  <span className="font-semibold text-slate-900 dark:text-white leading-tight">
+                  <span className="font-semibold leading-tight text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">
                     {user?.name}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight capitalize">
+                  <span className="text-xs capitalize leading-tight text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-300">
                     {user?.role}
                   </span>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </motion.header>
