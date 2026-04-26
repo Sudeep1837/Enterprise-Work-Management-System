@@ -400,7 +400,17 @@ Post-deployment verification:
 GET https://enterprise-work-management-system.onrender.com/api/health
 ```
 
-Expected result: the health endpoint should return a successful response confirming that the Render backend is running.
+Verified health response from the deployed Render backend:
+
+```json
+{
+  "status": "ok",
+  "uptime": 408.70188035,
+  "timestamp": "2026-04-26T11:17:34.017Z"
+}
+```
+
+This confirms that the deployed backend is live and responding successfully. The `uptime` and `timestamp` values will change each time the health endpoint is checked.
 
 ## Screenshots
 
