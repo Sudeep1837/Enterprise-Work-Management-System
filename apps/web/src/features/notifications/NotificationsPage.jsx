@@ -4,9 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   markNotificationReadAsync,
+  deleteNotificationAsync,
+  clearNotificationsAsync,
   markAllWorkspaceNotificationsReadAsync,
   purgeWorkspaceNotificationsAsync,
 } from "../../store/workSlice";
+import { selectResolvedNotifications } from "../../store/selectors";
 import { EmptyState, PageCard, PageHeader, Button, Badge, ConfirmDialog } from "../common/components/UI";
 import { isAdmin } from "../../lib/permissions";
 import {
@@ -91,10 +94,12 @@ const TYPE_BADGE = {
 export default function NotificationsPage() {
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
-  const notifications = useSelector((state) => state.work.notifications);
+  const notifications = useSelector(selectResolvedNotifications);
   const currentUser = useSelector((state) => state.auth.user);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmClearMine, setConfirmClearMine] = useState(false);
   const [bulkBusy, setBulkBusy] = useState("");
+  const [deletingId, setDeletingId] = useState("");
   const adminView = isAdmin(currentUser);
 
   const unreadCount = useMemo(
@@ -131,6 +136,18 @@ export default function NotificationsPage() {
     toast.success("All workspace notifications marked as read");
   };
 
+  const clearMyNotifications = async () => {
+    setBulkBusy("mine");
+    const result = await dispatch(clearNotificationsAsync());
+    setBulkBusy("");
+    setConfirmClearMine(false);
+    if (result.error) {
+      toast.error(result.payload || "Failed to clear your notifications");
+      return;
+    }
+    toast.success("Your notifications were cleared");
+  };
+
   const clearWorkspaceNotifications = async () => {
     setBulkBusy("clear");
     const result = await dispatch(purgeWorkspaceNotificationsAsync());
@@ -141,6 +158,18 @@ export default function NotificationsPage() {
       return;
     }
     toast.success("All workspace notifications cleared");
+  };
+
+  const deleteNotification = async (item) => {
+    const notificationId = item.id || item._id;
+    setDeletingId(notificationId);
+    const result = await dispatch(deleteNotificationAsync(notificationId));
+    setDeletingId("");
+    if (result.error) {
+      toast.error(result.payload || "Failed to delete notification");
+      return;
+    }
+    toast.success("Notification removed");
   };
 
   return (
@@ -155,6 +184,16 @@ export default function NotificationsPage() {
         icon={Bell}
         actions={
           <div className="flex items-center gap-2">
+            {notifications.length > 0 && (
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmClearMine(true)}
+                disabled={Boolean(bulkBusy)}
+              >
+                <Trash2 className="h-4 w-4" />
+                {bulkBusy === "mine" ? "Clearing..." : "Clear mine"}
+              </Button>
+            )}
             {adminView && unreadCount > 0 && (
               <Button
                 variant="secondary"
@@ -268,6 +307,7 @@ export default function NotificationsPage() {
                               {!item.read && (
                                 <button
                                   title="Mark as read"
+                                  aria-label="Mark notification as read"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     dispatch(markNotificationReadAsync(item.id || item._id));
@@ -277,6 +317,18 @@ export default function NotificationsPage() {
                                   <Check className="h-3.5 w-3.5" />
                                 </button>
                               )}
+                              <button
+                                title="Delete notification"
+                                aria-label="Delete notification"
+                                disabled={deletingId === (item.id || item._id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteNotification(item);
+                                }}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-60 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </motion.div>
                         );
@@ -295,6 +347,13 @@ export default function NotificationsPage() {
         message="This permanently deletes every notification for every user in the workspace. This hard-delete action cannot be undone."
         onCancel={() => setConfirmClear(false)}
         onConfirm={clearWorkspaceNotifications}
+      />
+      <ConfirmDialog
+        open={confirmClearMine}
+        title="Clear your notifications?"
+        message="This permanently removes your personal notifications from your account. Other users' notifications are not affected."
+        onCancel={() => setConfirmClearMine(false)}
+        onConfirm={clearMyNotifications}
       />
     </div>
   );

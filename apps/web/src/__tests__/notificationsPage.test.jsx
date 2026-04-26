@@ -1,5 +1,5 @@
 import React from "react";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NotificationsPage from "../features/notifications/NotificationsPage";
 import { renderWithProviders } from "../test-utils/renderWithProviders";
@@ -103,5 +103,80 @@ describe("NotificationsPage", () => {
 
     expect(await screen.findByText(/all caught up/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /mark all read/i })).not.toBeInTheDocument();
+  });
+
+  test("renders notification actor names from current user identity", () => {
+    renderWithProviders(<NotificationsPage />, {
+      preloadedState: {
+        auth: { user: { id: "emp-1", role: "employee" }, token: "token", initialized: true, status: "succeeded", error: null },
+        work: {
+          theme: "light",
+          ui: {},
+          projects: [],
+          tasks: [],
+          users: [{ id: "actor-1", name: "Sudeep Dehury" }],
+          notifications: [
+            {
+              id: "notif-1",
+              type: "assignment",
+              actorId: "actor-1",
+              actorName: "Olivia Chen",
+              action: "assigned",
+              entityName: "Launch Portal",
+              relatedEntityType: "task",
+              read: false,
+              createdAt: "2099-01-01T00:00:00.000Z",
+            },
+          ],
+          activity: [],
+          status: "idle",
+          error: null,
+        },
+      },
+    });
+
+    expect(screen.getByText("Sudeep Dehury")).toBeInTheDocument();
+    expect(screen.queryByText("Olivia Chen")).not.toBeInTheDocument();
+  });
+
+  test("lets a user delete their own notification", async () => {
+    const user = userEvent.setup();
+    apiClient.delete.mockResolvedValue({ data: { success: true, id: "notif-1" } });
+
+    renderWithProviders(<NotificationsPage />, {
+      preloadedState: {
+        auth: { user: { id: "emp-1", role: "employee" }, token: "token", initialized: true, status: "succeeded", error: null },
+        work: {
+          theme: "light",
+          ui: {},
+          projects: [],
+          tasks: [],
+          users: [],
+          notifications: [
+            {
+              id: "notif-1",
+              type: "assignment",
+              actorName: "Asha Admin",
+              action: "assigned",
+              entityName: "Launch Portal",
+              relatedEntityType: "task",
+              read: false,
+              createdAt: "2099-01-01T00:00:00.000Z",
+            },
+          ],
+          activity: [],
+          status: "idle",
+          error: null,
+        },
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: /delete notification/i }));
+
+    expect(apiClient.delete).toHaveBeenCalledWith("/notifications/notif-1");
+    await waitFor(() => {
+      expect(screen.queryByText("Launch Portal")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(/you're all caught up/i)).toBeInTheDocument();
   });
 });

@@ -9,6 +9,7 @@ const notificationSchema = new mongoose.Schema(
     read: { type: Boolean, default: false },
     relatedEntityType: { type: String, enum: ["task", "project", "comment", "user", "system"] },
     relatedEntityId: { type: mongoose.Schema.Types.ObjectId },
+    actorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     actorName: { type: String },
     action: { type: String },
     entityName: { type: String },

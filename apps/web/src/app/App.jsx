@@ -9,6 +9,7 @@ import {
   socketTaskUpserted, socketTaskDeleted,
   socketCommentAdded, socketNotificationCreated, socketActivityCreated,
   socketUserUpdated,
+  clearNotificationsSync, socketNotificationDeleted,
   socketNotificationsAllRead, socketNotificationsPurged,
   socketActivityPurged, socketTelemetryPurged,
 } from "../store/workSlice";
@@ -85,6 +86,8 @@ function App() {
     });
 
     socket.on("notification:all-read", () => dispatch(socketNotificationsAllRead()));
+    socket.on("notification:deleted", (payload) => dispatch(socketNotificationDeleted(payload)));
+    socket.on("notifications:cleared", () => dispatch(clearNotificationsSync()));
     socket.on("notification:purged", () => dispatch(socketNotificationsPurged()));
 
     socket.on("activity:created", (payload) => {

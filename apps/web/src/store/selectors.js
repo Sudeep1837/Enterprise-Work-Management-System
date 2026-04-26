@@ -158,6 +158,31 @@ export const selectKanbanColumns = createSelector(
   }
 );
 
+export const selectResolvedNotifications = createSelector(
+  [selectNotifications, selectUsers, selectAuth],
+  (notifications, users, auth) => {
+    const userById = makeEntityMap(users);
+    const currentUserId = getEntityId(auth.user);
+
+    return notifications.map((notification) => {
+      const actorId = getEntityId(notification.actorId);
+      const populatedActor =
+        notification.actorId && typeof notification.actorId === "object"
+          ? notification.actorId
+          : null;
+      const actor =
+        (actorId && actorId === currentUserId ? auth.user : null) ||
+        userById.get(actorId) ||
+        populatedActor;
+
+      return {
+        ...notification,
+        actorName: actor?.name || notification.actorName,
+      };
+    });
+  }
+);
+
 // ─── Workload Metrics ─────────────────────────────────────────────────────────
 export const selectWorkloadMetrics = createSelector([selectUsers, selectTasks], (users, tasks) => {
   if (!users || !users.length) return [];

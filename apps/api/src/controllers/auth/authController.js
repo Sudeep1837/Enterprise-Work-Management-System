@@ -1,5 +1,6 @@
 import * as authService from "../../services/authService.js";
 import * as userService from "../../services/userService.js";
+import { emitToAll } from "../../sockets/socketServer.js";
 
 export async function signup(req, res, next) {
   try {
@@ -35,6 +36,7 @@ export async function updateProfile(req, res, next) {
     // We only allow users to update basic profile info for themselves
     const user = await userService.updateUser(req.user.sub, { name, email, avatar });
     if (!user) return res.status(404).json({ message: "User not found" });
+    emitToAll("user:updated", user);
     return res.json({ user });
   } catch (error) {
     next(error);

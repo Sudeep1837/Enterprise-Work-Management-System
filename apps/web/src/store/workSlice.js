@@ -181,6 +181,15 @@ export const markNotificationReadAsync = createAsyncThunk("work/markNotification
   }
 });
 
+export const deleteNotificationAsync = createAsyncThunk("work/deleteNotification", async (id, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete(`/notifications/${id}`);
+    return response.data || { id };
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete notification"));
+  }
+});
+
 export const clearNotificationsAsync = createAsyncThunk("work/clearNotifications", async (_, { rejectWithValue }) => {
   try {
     await apiClient.delete("/notifications/clear");
@@ -399,6 +408,12 @@ const workSlice = createSlice({
     clearNotificationsSync: (state) => {
       state.notifications = [];
     },
+    socketNotificationDeleted: (state, action) => {
+      const notificationId = action.payload?.id || action.payload;
+      state.notifications = state.notifications.filter(
+        (n) => (n.id || n._id?.toString()) !== notificationId
+      );
+    },
     socketNotificationsAllRead: (state) => {
       state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
     },
@@ -569,6 +584,12 @@ const workSlice = createSlice({
         const notification = state.notifications.find((n) => n.id === action.payload.id);
         if (notification) notification.read = true;
       })
+      .addCase(deleteNotificationAsync.fulfilled, (state, action) => {
+        const notificationId = action.payload?.id || action.meta.arg;
+        state.notifications = state.notifications.filter(
+          (n) => (n.id || n._id?.toString()) !== notificationId
+        );
+      })
       .addCase(clearNotificationsAsync.fulfilled, (state) => {
         state.notifications = [];
       })
@@ -613,6 +634,7 @@ export const {
   socketTaskDeleted,
   socketCommentAdded,
   socketNotificationCreated,
+  socketNotificationDeleted,
   socketActivityCreated,
   socketUserUpdated,
   clearNotificationsSync,

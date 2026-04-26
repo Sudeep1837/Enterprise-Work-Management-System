@@ -4,6 +4,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   clearNotifications,
+  deleteNotification,
   markAllWorkspaceNotificationsRead,
   purgeAllWorkspaceNotifications,
 } from "../../controllers/notifications/notificationController.js";
@@ -18,7 +19,8 @@ router.get("/", getNotifications);
 router.put("/workspace/read-all", roleMiddleware(["admin"]), markAllWorkspaceNotificationsRead);
 router.delete("/workspace/purge", roleMiddleware(["admin"]), purgeAllWorkspaceNotifications);
 router.put("/read-all", markAllNotificationsRead);
-router.put("/:id/read", markNotificationRead);
 router.delete("/clear", clearNotifications);
+router.put("/:id/read", markNotificationRead);
+router.delete("/:id", deleteNotification);
 
 export default router;
