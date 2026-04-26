@@ -1,4 +1,4 @@
-import { selectKanbanColumns } from "../store/selectors";
+import { selectKanbanColumns, selectOverdueCriticalTasks } from "../store/selectors";
 
 const makeState = ({ tasks = [], projects = [], users = [] }) => ({
   work: {
@@ -55,6 +55,36 @@ describe("kanban selectors", () => {
     expect(reviewColumn.tasks[0]).toMatchObject({
       displayProjectName: "Cached Project",
       displayAssigneeName: "Cached User",
+    });
+  });
+
+  test("resolves overdue dashboard task names from latest user and project state", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const state = makeState({
+      tasks: [
+        {
+          id: "t1",
+          title: "Resolve production incident",
+          status: "Todo",
+          priority: "Critical",
+          dueDate: yesterday.toISOString(),
+          projectId: "p1",
+          projectName: "Stale Project",
+          assigneeId: "u1",
+          assigneeName: "Old User",
+        },
+      ],
+      projects: [{ id: "p1", name: "Live Project" }],
+      users: [{ id: "u1", name: "Renamed User" }],
+    });
+
+    expect(selectOverdueCriticalTasks(state)[0]).toMatchObject({
+      projectName: "Live Project",
+      assigneeName: "Renamed User",
+      displayProjectName: "Live Project",
+      displayAssigneeName: "Renamed User",
     });
   });
 });

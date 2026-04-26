@@ -72,7 +72,9 @@ function OverdueTasksCard({ tasks }) {
           <div key={t.id} className="flex items-start justify-between gap-3 rounded-xl bg-red-50/60 dark:bg-red-500/5 border border-red-200/60 dark:border-red-500/20 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{t.title}</p>
-              <p className="text-xs text-slate-500">{t.projectName || "No project"} · {t.assigneeName || "Unassigned"}</p>
+              <p className="text-xs text-slate-500">
+                {t.displayProjectName || t.projectName || "No project"} · {t.displayAssigneeName || t.assigneeName || "Unassigned"}
+              </p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-xs font-bold text-red-600 dark:text-red-400">{daysOverdue(t.dueDate)}d overdue</p>
@@ -98,7 +100,9 @@ function MyTasksCard({ tasks }) {
               <div key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/60 dark:border-white/10 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{t.title}</p>
-                  {t.projectName && <p className="text-xs text-indigo-500">{t.projectName}</p>}
+                  {(t.displayProjectName || t.projectName) && (
+                    <p className="text-xs text-indigo-500">{t.displayProjectName || t.projectName}</p>
+                  )}
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
                   {t.dueDate && (

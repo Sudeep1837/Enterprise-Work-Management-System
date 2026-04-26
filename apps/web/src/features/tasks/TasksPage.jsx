@@ -8,7 +8,7 @@ import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
 import { deleteTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
-import { selectDashboardMetrics } from "../../store/selectors";
+import { selectDashboardMetrics, selectResolvedTasks } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
@@ -18,7 +18,7 @@ import { canDeleteTask, canUpdateTask, isEmployee, isAdmin, isManager } from "..
 
 export default function TasksPage() {
   const dispatch = useDispatch();
-  const tasks = useSelector((state) => state.work.tasks);
+  const tasks = useSelector(selectResolvedTasks);
   const users = useSelector((state) => state.work.users);
   const projects = useSelector((state) => state.work.projects);
   const metrics = useSelector(selectDashboardMetrics);
@@ -339,11 +339,11 @@ export default function TasksPage() {
                         </span>
                         <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5 font-medium text-slate-600 dark:text-slate-300">
                           <User className="h-3.5 w-3.5" />
-                          {getUserName(task.assigneeId)}
+                          {task.displayAssigneeName || getUserName(task.assigneeId)}
                         </span>
-                        {task.projectName && (
+                        {task.displayProjectName && (
                           <span className="flex items-center gap-1.5 before:content-['·'] before:mr-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
-                            {task.projectName}
+                            {task.displayProjectName}
                           </span>
                         )}
                         {task.dueDate && (

@@ -9,6 +9,7 @@ import { DonutChartCard, StripMetric, InsightCard, CustomChartTooltip } from "..
 import {
   selectDashboardMetrics, selectWorkloadMetrics, selectWeeklyTrend,
   selectOverdueVsCompleted, selectDueSoonTasks, selectProjectHealth,
+  selectScopedTasks,
 } from "../../store/selectors";
 import {
   BarChart3, Filter, ShieldAlert, TrendingUp, Clock, CheckCircle2,
@@ -206,7 +207,7 @@ export default function ReportsPage() {
   const overdueVsComp = useSelector(selectOverdueVsCompleted);
   const dueSoon       = useSelector(selectDueSoonTasks);
   const projectHealth = useSelector(selectProjectHealth);
-  const allTasks      = useSelector((state) => state.work.tasks);
+  const allTasks      = useSelector(selectScopedTasks);
   const allProjects   = useSelector((state) => state.work.projects);
   const currentUser   = useSelector((state) => state.auth.user);
 

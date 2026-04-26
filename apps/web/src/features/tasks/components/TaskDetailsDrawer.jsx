@@ -89,6 +89,7 @@ export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
   const user     = useSelector((state) => state.auth.user);
   const activity = useSelector((state) => state.work.activity || []);
   const projects = useSelector((state) => state.work.projects || []);
+  const users    = useSelector((state) => state.work.users || []);
   const [details, setDetails] = useState(null);
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
@@ -117,7 +118,22 @@ export default function TaskDetailsDrawer({ task: initialTask, onClose }) {
   }, [initialTask]);
 
   const activeTask = details || initialTask;
-  const task = activeTask;
+  const task = useMemo(() => {
+    if (!activeTask) return null;
+    const assigneeId = activeTask.assigneeId?._id || activeTask.assigneeId;
+    const reporterId = activeTask.reporterId?._id || activeTask.reporterId;
+    const projectId = activeTask.projectId?._id || activeTask.projectId;
+    const assignee = users.find((item) => (item.id || item._id)?.toString() === assigneeId?.toString());
+    const reporter = users.find((item) => (item.id || item._id)?.toString() === reporterId?.toString());
+    const project = projects.find((item) => (item.id || item._id)?.toString() === projectId?.toString());
+
+    return {
+      ...activeTask,
+      assigneeName: assignee?.name || activeTask.displayAssigneeName || activeTask.assigneeName,
+      reporterName: reporter?.name || activeTask.displayReporterName || activeTask.reporterName,
+      projectName: project?.name || activeTask.displayProjectName || activeTask.projectName,
+    };
+  }, [activeTask, projects, users]);
   const taskId = activeTask?.id || activeTask?._id;
   const taskProject = useMemo(() => {
     const projectId = activeTask?.projectId?._id || activeTask?.projectId;

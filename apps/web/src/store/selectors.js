@@ -17,6 +17,35 @@ const getEntityId = (entity) => {
 const makeEntityMap = (items) =>
   new Map((items || []).map((item) => [getEntityId(item), item]).filter(([id]) => Boolean(id)));
 
+const resolveTaskDisplayData = (task, projectById, userById) => {
+  const project = projectById.get(getEntityId(task.projectId));
+  const assignee = userById.get(getEntityId(task.assigneeId));
+  const reporter = userById.get(getEntityId(task.reporterId));
+  const projectName = project?.name || task.projectName || "";
+  const assigneeName = assignee?.name || task.assigneeName || "Unassigned";
+  const reporterName = reporter?.name || task.reporterName || "Not recorded";
+
+  return {
+    ...task,
+    projectName,
+    assigneeName,
+    reporterName,
+    displayProjectName: projectName,
+    displayAssigneeName: assigneeName,
+    displayReporterName: reporterName,
+  };
+};
+
+export const selectResolvedTasks = createSelector(
+  [selectTasks, selectProjects, selectUsers],
+  (tasks, projects, users) => {
+    const projectById = makeEntityMap(projects);
+    const userById = makeEntityMap(users);
+
+    return tasks.map((task) => resolveTaskDisplayData(task, projectById, userById));
+  }
+);
+
 // ─── Dashboard Metrics ────────────────────────────────────────────────────────
 export const selectDashboardMetrics = createSelector([selectProjects, selectTasks, selectNotifications], (projects, tasks, notifications) => {
   const now = new Date();
@@ -59,18 +88,24 @@ export const selectDashboardMetrics = createSelector([selectProjects, selectTask
 });
 
 // ─── Project Health ───────────────────────────────────────────────────────────
-export const selectProjectHealth = createSelector([selectProjects, selectTasks], (projects, tasks) => {
+export const selectProjectHealth = createSelector([selectProjects, selectTasks, selectUsers], (projects, tasks, users) => {
+  const userById = makeEntityMap(users);
+
   return projects.map((project) => {
     const projectTasks = tasks.filter(
-      (t) => t.projectId?.toString() === project.id?.toString()
+      (t) => getEntityId(t.projectId) === getEntityId(project)
     );
     const completed = projectTasks.filter((t) => t.status === "Done").length;
     const progress = projectTasks.length
       ? Math.round((completed / projectTasks.length) * 100)
       : 0;
+    const owner = userById.get(getEntityId(project.ownerId));
+    const ownerName = owner?.name || project.owner || "Unassigned";
 
     return {
       ...project,
+      owner: ownerName,
+      displayOwnerName: ownerName,
       taskCount: projectTasks.length,
       completedCount: completed,
       progress,
@@ -90,9 +125,9 @@ export const selectAtRiskProjects = createSelector(
 );
 
 // ─── Overdue Critical Tasks ───────────────────────────────────────────────────
-export const selectOverdueCriticalTasks = createSelector([selectWork], (work) => {
+export const selectOverdueCriticalTasks = createSelector([selectResolvedTasks], (tasks) => {
   const now = new Date();
-  return work.tasks
+  return tasks
     .filter(
       (t) =>
         t.status !== "Done" &&
@@ -135,22 +170,8 @@ export const selectKanbanMetrics = createSelector([selectWork], (work) => {
 });
 
 export const selectKanbanColumns = createSelector(
-  [selectTasks, selectProjects, selectUsers],
-  (tasks, projects, users) => {
-    const projectById = makeEntityMap(projects);
-    const userById = makeEntityMap(users);
-
-    const cards = tasks.map((task) => {
-      const project = projectById.get(getEntityId(task.projectId));
-      const assignee = userById.get(getEntityId(task.assigneeId));
-
-      return {
-        ...task,
-        displayProjectName: project?.name || task.projectName || "",
-        displayAssigneeName: assignee?.name || task.assigneeName || "Unassigned",
-      };
-    });
-
+  [selectResolvedTasks],
+  (cards) => {
     return TASK_STATUSES.map((status) => ({
       status,
       tasks: cards.filter((task) => task.status === status),
@@ -189,11 +210,12 @@ export const selectWorkloadMetrics = createSelector([selectUsers, selectTasks], 
 
   return users
     .map((user) => {
+      const userId = getEntityId(user);
       const activeTasks = tasks.filter(
-        (t) => t.assigneeId?.toString() === user.id?.toString() && t.status !== "Done"
+        (t) => getEntityId(t.assigneeId) === userId && t.status !== "Done"
       );
       const completedTasks = tasks.filter(
-        (t) => t.assigneeId?.toString() === user.id?.toString() && t.status === "Done"
+        (t) => getEntityId(t.assigneeId) === userId && t.status === "Done"
       );
       const overdueTasks = activeTasks.filter(
         (t) => t.dueDate && new Date(t.dueDate) < new Date()
@@ -211,20 +233,20 @@ export const selectWorkloadMetrics = createSelector([selectUsers, selectTasks], 
 });
 
 // ─── My Tasks (for Employee role-based view) ────────────────────────────────────
-export const selectMyTasks = createSelector([selectWork, selectAuth], (work, auth) => {
+export const selectMyTasks = createSelector([selectResolvedTasks, selectAuth], (tasks, auth) => {
   if (!auth.user) return [];
-  const userId = auth.user.id || auth.user._id;
-  return work.tasks.filter(
-    (t) => t.assigneeId?.toString() === userId?.toString() && t.status !== "Done"
+  const userId = getEntityId(auth.user);
+  return tasks.filter(
+    (t) => getEntityId(t.assigneeId) === userId && t.status !== "Done"
   );
 });
 
 // ─── Tasks Due Soon (next 7 days, not Done) ───────────────────────────────────
-export const selectDueSoonTasks = createSelector([selectTasks, selectAuth], (tasks, auth) => {
+export const selectDueSoonTasks = createSelector([selectResolvedTasks, selectAuth], (tasks, auth) => {
   const now = new Date();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + 7);
-  const userId = auth.user?.id || auth.user?._id;
+  const userId = getEntityId(auth.user);
 
   return tasks
     .filter((t) => {
@@ -233,7 +255,7 @@ export const selectDueSoonTasks = createSelector([selectTasks, selectAuth], (tas
       if (due < now || due > cutoff) return false;
       // For employees: only their own tasks
       if (auth.user?.role === "employee") {
-        return t.assigneeId?.toString() === userId?.toString();
+        return getEntityId(t.assigneeId) === userId;
       }
       return true;
     })
@@ -246,7 +268,7 @@ export const selectDueSoonTasks = createSelector([selectTasks, selectAuth], (tas
  * Since the backend now returns role-scoped data per workspace,
  * these selectors are pass-throughs that declare workspace intent explicitly.
  */
-export const selectScopedTasks = createSelector([selectWork], (work) => work.tasks);
+export const selectScopedTasks = selectResolvedTasks;
 export const selectScopedProjects = createSelector([selectWork], (work) => work.projects);
 
 // ─── Project Status Distribution ──────────────────────────────────────────────
