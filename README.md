@@ -334,8 +334,8 @@ Current test suite:
 
 - 18 test files
 - 37 passing tests
-- Includes integration-style user flow coverage for authentication, login to protected navigation, project creation, task assignment, route guards, protected routes, notifications, forms, Kanban selectors, Redux slices, and user-management UI behavior.
-- Explicitly covers loading and error states for authentication, including in-flight login UI and API error display.
+- Covers more than 5 component/page areas, including Auth pages, Users, Projects, Tasks, Notifications, Password form, Command Palette, route guards, and protected routes.
+- Includes an integration-style user flow test for login -> create project -> assign task, plus additional coverage for authentication navigation, forms, Kanban selectors, Redux slices, and user-management UI behavior.
 
 Run tests:
 
