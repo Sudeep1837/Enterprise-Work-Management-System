@@ -340,6 +340,12 @@ Key coverage areas:
 - Redux Toolkit coverage for auth/work state transitions, async thunk behavior, socket-style realtime upserts, notification/activity deduping, and clearing activity feeds.
 - Integration-style user flows including login -> create project -> assign task and employee task execution with RBAC restrictions.
 
+Testing requirements coverage:
+
+- Unit/component tests cover more than the required 5 components/pages, including Auth pages, Dashboard, UsersPage, UserForm, ProjectsPage, ProjectForm, TasksPage, TaskForm, EmployeeTaskUpdate, NotificationsPage, PasswordForm, CommandPalette, ProtectedRoute, and RoleGuard.
+- Integration tests include the required user-flow example: login -> create project -> assign task.
+- Additional integration coverage verifies employee task execution with RBAC restrictions.
+
 Current quality metrics:
 
 ```text
@@ -355,6 +361,12 @@ Run tests:
 
 ```bash
 npm run test -w apps/web
+```
+
+Run coverage:
+
+```bash
+npm test -- --coverage
 ```
 
 Linting:
