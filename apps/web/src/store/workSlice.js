@@ -190,6 +190,24 @@ export const clearNotificationsAsync = createAsyncThunk("work/clearNotifications
   }
 });
 
+export const markAllWorkspaceNotificationsReadAsync = createAsyncThunk("work/markAllWorkspaceNotificationsRead", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.put("/notifications/workspace/read-all");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to mark workspace notifications read"));
+  }
+});
+
+export const purgeWorkspaceNotificationsAsync = createAsyncThunk("work/purgeWorkspaceNotifications", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete("/notifications/workspace/purge");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear workspace notifications"));
+  }
+});
+
 export const markAllNotificationsReadAsync = createAsyncThunk("work/markAllNotificationsRead", async (_, { rejectWithValue }) => {
   try {
     await apiClient.put("/notifications/read-all");
@@ -248,6 +266,24 @@ export const fetchActivity = createAsyncThunk(
       shouldFetchCollection(getState(), "activity", "activityStatus", 30_000, options),
   }
 );
+
+export const purgeActivityLogAsync = createAsyncThunk("work/purgeActivityLog", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete("/activity/purge");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear activity log"));
+  }
+});
+
+export const purgeTelemetryAsync = createAsyncThunk("work/purgeTelemetry", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete("/activity/telemetry/purge");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear workspace telemetry"));
+  }
+});
 
 const persisted = readStorage();
 
@@ -362,6 +398,18 @@ const workSlice = createSlice({
     },
     clearNotificationsSync: (state) => {
       state.notifications = [];
+    },
+    socketNotificationsAllRead: (state) => {
+      state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+    },
+    socketNotificationsPurged: (state) => {
+      state.notifications = [];
+    },
+    socketActivityPurged: (state) => {
+      state.activity = [];
+    },
+    socketTelemetryPurged: (state) => {
+      state.activity = [];
     }
   },
   extraReducers: (builder) => {
@@ -527,6 +575,12 @@ const workSlice = createSlice({
       .addCase(markAllNotificationsReadAsync.fulfilled, (state) => {
         state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
       })
+      .addCase(markAllWorkspaceNotificationsReadAsync.fulfilled, (state) => {
+        state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+      })
+      .addCase(purgeWorkspaceNotificationsAsync.fulfilled, (state) => {
+        state.notifications = [];
+      })
       // Activity
       .addCase(fetchActivity.pending, (state) => {
         state.activityStatus = "loading";
@@ -540,6 +594,12 @@ const workSlice = createSlice({
       .addCase(fetchActivity.rejected, (state, action) => {
         state.activityStatus = "failed";
         state.error = action.payload || action.error.message || "Failed to load activity";
+      })
+      .addCase(purgeActivityLogAsync.fulfilled, (state) => {
+        state.activity = [];
+      })
+      .addCase(purgeTelemetryAsync.fulfilled, (state) => {
+        state.activity = [];
       });
   },
 });
@@ -556,6 +616,10 @@ export const {
   socketActivityCreated,
   socketUserUpdated,
   clearNotificationsSync,
+  socketNotificationsAllRead,
+  socketNotificationsPurged,
+  socketActivityPurged,
+  socketTelemetryPurged,
 } = workSlice.actions;
 
 export default workSlice.reducer;

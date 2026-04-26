@@ -1,4 +1,5 @@
 import ActivityLog from "../../models/ActivityLog.js";
+import { emitToAll } from "../../sockets/socketServer.js";
 
 import User from "../../models/User.js";
 
@@ -37,6 +38,28 @@ export const getActivities = async (req, res, next) => {
       .limit(limit);
       
     res.json(activities);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const purgeActivityFeed = async (res, eventName, source) => {
+  const result = await ActivityLog.deleteMany({});
+  emitToAll(eventName, { source });
+  res.json({ success: true, deletedCount: result.deletedCount || 0 });
+};
+
+export const purgeActivities = async (req, res, next) => {
+  try {
+    await purgeActivityFeed(res, "activity:purged", "activity-log");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const purgeTelemetry = async (req, res, next) => {
+  try {
+    await purgeActivityFeed(res, "telemetry:purged", "workspace-telemetry");
   } catch (error) {
     next(error);
   }

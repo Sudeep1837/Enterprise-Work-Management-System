@@ -9,6 +9,8 @@ import {
   socketTaskUpserted, socketTaskDeleted,
   socketCommentAdded, socketNotificationCreated, socketActivityCreated,
   socketUserUpdated,
+  socketNotificationsAllRead, socketNotificationsPurged,
+  socketActivityPurged, socketTelemetryPurged,
 } from "../store/workSlice";
 import { fetchMeThunk } from "../store/authSlice";
 import { connectSocket, disconnectSocket } from "../services/socketClient";
@@ -82,6 +84,9 @@ function App() {
       toast.info(toastMsg, { icon: "🔔" });
     });
 
+    socket.on("notification:all-read", () => dispatch(socketNotificationsAllRead()));
+    socket.on("notification:purged", () => dispatch(socketNotificationsPurged()));
+
     socket.on("activity:created", (payload) => {
       const currentUser = currentUserRef.current;
       const users = usersRef.current;
@@ -107,6 +112,8 @@ function App() {
     });
 
     // EC12: user:updated — sync role/team/active state across all sessions
+    socket.on("activity:purged", () => dispatch(socketActivityPurged()));
+    socket.on("telemetry:purged", () => dispatch(socketTelemetryPurged()));
     socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
     return () => disconnectSocket();

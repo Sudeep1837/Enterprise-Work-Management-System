@@ -1,6 +1,9 @@
-import { useSelector } from "react-redux";
-import { PageHeader, PageCard, Badge } from "../common/components/UI";
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import { PageHeader, PageCard, Badge, Button, ConfirmDialog } from "../common/components/UI";
 import { InsightCard, DonutChartCard, MiniTrendChart, StripMetric } from "../common/components/Analytics";
+import { purgeTelemetryAsync } from "../../store/workSlice";
 import {
   selectDashboardMetrics,
   selectWeeklyTrend,
@@ -157,6 +160,7 @@ function WorkingUnderCard({ user }) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const dispatch       = useDispatch();
   const metrics        = useSelector(selectDashboardMetrics);
   const trendData      = useSelector(selectWeeklyTrend);
   const projectHealth  = useSelector(selectProjectHealth);
@@ -168,6 +172,8 @@ export default function DashboardPage() {
   const dueSoon        = useSelector(selectDueSoonTasks);
   const activity       = useSelector((state) => state.work.activity);
   const authUser       = useSelector((state) => state.auth.user);
+  const [confirmTelemetryPurge, setConfirmTelemetryPurge] = useState(false);
+  const [purgingTelemetry, setPurgingTelemetry] = useState(false);
 
   const role           = authUser?.role || "employee";
   const isAdmin        = role === "admin";
@@ -177,6 +183,18 @@ export default function DashboardPage() {
   const recentProject   = [...projectHealth].sort(
     (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
   )[0];
+
+  const purgeTelemetry = async () => {
+    setPurgingTelemetry(true);
+    const result = await dispatch(purgeTelemetryAsync());
+    setPurgingTelemetry(false);
+    setConfirmTelemetryPurge(false);
+    if (result.error) {
+      toast.error(result.payload || "Failed to clear workspace telemetry");
+      return;
+    }
+    toast.success("Workspace telemetry purged");
+  };
 
   return (
     <div className="space-y-8">
@@ -343,7 +361,24 @@ export default function DashboardPage() {
           </PageCard>
 
           {/* Workspace Telemetry */}
-          <PageCard title="Workspace Telemetry" subtitle="Live operational feed" className="min-h-[320px]">
+          <PageCard
+            title="Workspace Telemetry"
+            subtitle="Live operational feed"
+            className="min-h-[320px]"
+            actions={
+              isAdmin && activity.length > 0 ? (
+                <Button
+                  variant="ghost"
+                  className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  onClick={() => setConfirmTelemetryPurge(true)}
+                  disabled={purgingTelemetry}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {purgingTelemetry ? "Purging..." : "Clear Feed"}
+                </Button>
+              ) : null
+            }
+          >
             {activity.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
@@ -409,6 +444,14 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Workload Intelligence (Admin / Manager only) ─────────────────── */}
+      <ConfirmDialog
+        open={confirmTelemetryPurge}
+        title="Purge workspace telemetry?"
+        message="This permanently deletes the operational telemetry feed for the workspace. The dashboard and activity feed will clear for all users, and this hard-delete action cannot be undone."
+        onCancel={() => setConfirmTelemetryPurge(false)}
+        onConfirm={purgeTelemetry}
+      />
+
       {(isAdmin || isManager) && workload.length > 0 && (
         <PageCard title="Team Workload Distribution" subtitle="Active task load per member">
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

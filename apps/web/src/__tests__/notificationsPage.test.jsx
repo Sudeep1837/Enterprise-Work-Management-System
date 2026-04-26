@@ -29,13 +29,47 @@ describe("NotificationsPage", () => {
     expect(screen.queryByRole("button", { name: /mark all read/i })).not.toBeInTheDocument();
   });
 
-  test("renders rich notification content and marks all items as read", async () => {
+  test("keeps bulk notification controls hidden from managers", () => {
+    renderWithProviders(<NotificationsPage />, {
+      preloadedState: {
+        auth: { user: { id: "mgr-1", role: "manager" }, token: "token", initialized: true, status: "succeeded", error: null },
+        work: {
+          theme: "light",
+          ui: {},
+          projects: [],
+          tasks: [],
+          users: [],
+          notifications: [
+            {
+              id: "notif-1",
+              type: "assignment",
+              actorName: "Asha Admin",
+              action: "assigned",
+              entityName: "Launch Portal",
+              relatedEntityType: "task",
+              read: false,
+              createdAt: "2099-01-01T00:00:00.000Z",
+            },
+          ],
+          activity: [],
+          status: "idle",
+          error: null,
+        },
+      },
+    });
+
+    expect(screen.getByText(/1 unread notification/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark all read/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
+  });
+
+  test("renders rich notification content and lets admins mark all items as read", async () => {
     const user = userEvent.setup();
     apiClient.put.mockResolvedValue({ data: {} });
 
     renderWithProviders(<NotificationsPage />, {
       preloadedState: {
-        auth: { user: { id: "mgr-1", role: "manager" }, token: "token", initialized: true, status: "succeeded", error: null },
+        auth: { user: { id: "admin-1", role: "admin" }, token: "token", initialized: true, status: "succeeded", error: null },
         work: {
           theme: "light",
           ui: {},

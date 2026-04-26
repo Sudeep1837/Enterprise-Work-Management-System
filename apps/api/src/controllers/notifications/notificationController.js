@@ -1,4 +1,5 @@
 import Notification from "../../models/Notification.js";
+import { emitToAll } from "../../sockets/socketServer.js";
 
 export const getNotifications = async (req, res, next) => {
   try {
@@ -39,6 +40,29 @@ export const clearNotifications = async (req, res, next) => {
   try {
     await Notification.deleteMany({ userId: req.user.sub });
     res.json({ message: "Notifications cleared" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllWorkspaceNotificationsRead = async (req, res, next) => {
+  try {
+    const result = await Notification.updateMany(
+      { read: false },
+      { $set: { read: true } }
+    );
+    emitToAll("notification:all-read", { scope: "workspace" });
+    res.json({ success: true, modifiedCount: result.modifiedCount || 0 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const purgeAllWorkspaceNotifications = async (req, res, next) => {
+  try {
+    const result = await Notification.deleteMany({});
+    emitToAll("notification:purged", { scope: "workspace" });
+    res.json({ success: true, deletedCount: result.deletedCount || 0 });
   } catch (error) {
     next(error);
   }

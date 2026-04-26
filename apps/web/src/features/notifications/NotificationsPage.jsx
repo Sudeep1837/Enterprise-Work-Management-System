@@ -1,12 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
-  clearNotificationsAsync,
   markNotificationReadAsync,
-  markAllNotificationsReadAsync,
+  markAllWorkspaceNotificationsReadAsync,
+  purgeWorkspaceNotificationsAsync,
 } from "../../store/workSlice";
-import { EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
+import { EmptyState, PageCard, PageHeader, Button, Badge, ConfirmDialog } from "../common/components/UI";
+import { isAdmin } from "../../lib/permissions";
 import {
   Bell, BellRing, Check, CheckCheck, Trash2,
   UserCheck, MoveRight, FolderKanban, MessageSquare,
@@ -90,6 +92,10 @@ export default function NotificationsPage() {
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
   const notifications = useSelector((state) => state.work.notifications);
+  const currentUser = useSelector((state) => state.auth.user);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState("");
+  const adminView = isAdmin(currentUser);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -114,6 +120,29 @@ export default function NotificationsPage() {
     if (target) navigate(target);
   };
 
+  const markWorkspaceRead = async () => {
+    setBulkBusy("read");
+    const result = await dispatch(markAllWorkspaceNotificationsReadAsync());
+    setBulkBusy("");
+    if (result.error) {
+      toast.error(result.payload || "Failed to mark workspace notifications read");
+      return;
+    }
+    toast.success("All workspace notifications marked as read");
+  };
+
+  const clearWorkspaceNotifications = async () => {
+    setBulkBusy("clear");
+    const result = await dispatch(purgeWorkspaceNotificationsAsync());
+    setBulkBusy("");
+    setConfirmClear(false);
+    if (result.error) {
+      toast.error(result.payload || "Failed to clear workspace notifications");
+      return;
+    }
+    toast.success("All workspace notifications cleared");
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -126,23 +155,25 @@ export default function NotificationsPage() {
         icon={Bell}
         actions={
           <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
+            {adminView && unreadCount > 0 && (
               <Button
                 variant="secondary"
-                onClick={() => dispatch(markAllNotificationsReadAsync())}
+                onClick={markWorkspaceRead}
+                disabled={Boolean(bulkBusy)}
               >
                 <CheckCheck className="h-4 w-4" />
-                Mark all read
+                {bulkBusy === "read" ? "Marking..." : "Mark all read"}
               </Button>
             )}
-            {notifications.length > 0 && (
+            {adminView && notifications.length > 0 && (
               <Button
                 variant="ghost"
                 className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-                onClick={() => dispatch(clearNotificationsAsync())}
+                onClick={() => setConfirmClear(true)}
+                disabled={Boolean(bulkBusy)}
               >
                 <Trash2 className="h-4 w-4" />
-                Clear all
+                {bulkBusy === "clear" ? "Clearing..." : "Clear all"}
               </Button>
             )}
           </div>
@@ -258,6 +289,13 @@ export default function NotificationsPage() {
           </div>
         )}
       </PageCard>
+      <ConfirmDialog
+        open={confirmClear}
+        title="Clear all workspace notifications?"
+        message="This permanently deletes every notification for every user in the workspace. This hard-delete action cannot be undone."
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={clearWorkspaceNotifications}
+      />
     </div>
   );
 }

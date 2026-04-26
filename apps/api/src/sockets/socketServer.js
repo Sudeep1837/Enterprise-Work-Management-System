@@ -9,7 +9,11 @@ const DOMAIN_EVENTS = [
   "task:moved",
   "comment:added",
   "notification:created",
+  "notification:all-read",
+  "notification:purged",
   "activity:created",
+  "activity:purged",
+  "telemetry:purged",
 ];
 
 let ioInstance;
