@@ -30,9 +30,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">56.3% </span>
+                <span class="strong">58.82% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>67/119</span>
+                <span class='fraction'>70/119</span>
             </div>
         
             
@@ -582,19 +582,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1000,7 +1000,7 @@ export default function UsersPage() {
     // Raw ObjectId string — find in loaded users list if possible
     <span class="missing-if-branch" title="else path not taken" >E</span>if (typeof managerId === "string") {
       const found = usersById[managerId];
-      return found ? found.name : "—";
+      return found ? found.name : <span class="branch-1 cbranch-no" title="branch not covered" >"—";</span>
     }
 <span class="cstat-no" title="statement not covered" >    return "—";</span>
   }
@@ -1008,7 +1008,7 @@ export default function UsersPage() {
   function resolveManager(managerId) {
     if (!managerId) return null;
     <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof managerId === "object") <span class="cstat-no" title="statement not covered" >return managerId;</span>
-    return usersById[managerId] || null;
+    return usersById[managerId] || <span class="branch-1 cbranch-no" title="branch not covered" >null;</span>
   }
 &nbsp;
   return (
@@ -1204,8 +1204,8 @@ export default function UsersPage() {
                       {/* Status */}
                       &lt;td className="whitespace-nowrap px-6 py-4"&gt;
                         &lt;Badge
-                          value={user.isActive ? "Active" : <span class="branch-1 cbranch-no" title="branch not covered" >"Inactive"}</span>
-                          tone={user.isActive ? "green" : <span class="branch-1 cbranch-no" title="branch not covered" >"slate"}</span>
+                          value={user.isActive ? "Active" : "Inactive"}
+                          tone={user.isActive ? "green" : "slate"}
                         /&gt;
                       &lt;/td&gt;
 &nbsp;
@@ -1221,12 +1221,12 @@ export default function UsersPage() {
                               title={
                                 user.isActive
                                   ? "Deactivate account access while preserving historical work"
-                                  : <span class="branch-1 cbranch-no" title="branch not covered" >"Restore account access"</span>
+                                  : "Restore account access"
                               }
                               className={
                                 user.isActive
                                   ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"
-                                  : <span class="branch-1 cbranch-no" title="branch not covered" >"text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"</span>
+                                  : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
                               }
                               onClick={() =&gt; {
                                 const idToUpdate = user.id || <span class="branch-1 cbranch-no" title="branch not covered" >user._id;</span>
@@ -1243,7 +1243,7 @@ export default function UsersPage() {
                                   );
                               }}
                             &gt;
-                              {user.isActive ? "Deactivate" : <span class="branch-1 cbranch-no" title="branch not covered" >"Activate"}</span>
+                              {user.isActive ? "Deactivate" : "Activate"}
                             &lt;/Button&gt;
                           &lt;/div&gt;
                         &lt;/td&gt;
@@ -1312,7 +1312,7 @@ export default function UsersPage() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-26T14:46:39.621Z
+                at 2026-04-26T16:59:34.550Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
