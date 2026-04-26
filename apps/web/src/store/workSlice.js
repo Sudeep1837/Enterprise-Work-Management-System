@@ -14,6 +14,11 @@ const shouldFetchCollection = (state, key, statusKey, maxAgeMs = 60_000, options
   return !hasData || Date.now() - lastFetchedAt > maxAgeMs;
 };
 
+const getEntityId = (entity) => {
+  if (!entity) return "";
+  return (entity.id || entity._id || "").toString();
+};
+
 export const fetchProjects = createAsyncThunk(
   "work/fetchProjects",
   async (_, { rejectWithValue }) => {
@@ -552,7 +557,8 @@ const workSlice = createSlice({
         }
       })
       .addCase(updateUserAsync.fulfilled, (state, action) => {
-        const index = state.users.findIndex((u) => u.id === action.payload.id || u._id === action.payload.id || u.id === action.payload._id || u._id === action.payload._id);
+        const updatedId = getEntityId(action.payload);
+        const index = state.users.findIndex((u) => getEntityId(u) === updatedId);
         if (index !== -1) {
           state.users[index] = action.payload;
         }

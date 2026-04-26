@@ -350,7 +350,7 @@ Current quality metrics:
 
 ```text
 Test Suites: 24 passed
-Tests:       57 passed
+Tests:       58 passed
 Coverage:    62.41% statements
 Lint:        Passed for both web and API
 ```

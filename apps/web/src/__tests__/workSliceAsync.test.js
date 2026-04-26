@@ -8,6 +8,7 @@ import {
   socketNotificationCreated,
   socketProjectUpserted,
   socketTaskUpserted,
+  updateUserAsync,
 } from "../store/workSlice";
 import apiClient from "../services/apiClient";
 
@@ -122,5 +123,26 @@ describe("work slice async behavior and realtime upserts", () => {
 
     expect(apiClient.delete).toHaveBeenCalledWith("/activity/clear");
     expect(store.getState().work.activity).toEqual([]);
+  });
+
+  test("updates a user by normalized id without duplicating rows when _id is absent", async () => {
+    const store = makeStore({
+      users: [
+        { id: "mgr-1", name: "Mina Manager", role: "manager", isActive: true },
+        { id: "emp-1", name: "Priya Product", role: "employee", isActive: true },
+      ],
+    });
+    apiClient.patch.mockResolvedValue({
+      data: {
+        user: { id: "emp-1", name: "Priya Product", role: "employee", isActive: false },
+      },
+    });
+
+    await store.dispatch(updateUserAsync({ id: "emp-1", active: false }));
+
+    expect(store.getState().work.users).toEqual([
+      { id: "mgr-1", name: "Mina Manager", role: "manager", isActive: true },
+      { id: "emp-1", name: "Priya Product", role: "employee", isActive: false },
+    ]);
   });
 });
