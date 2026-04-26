@@ -19,6 +19,8 @@ import {
  */
 async function createAndEmitNotification(recipientId, payload) {
   if (!recipientId) return;
+  const actorId = payload.actorId?.toString();
+  if (actorId && actorId === recipientId.toString()) return;
   try {
     const notif = await Notification.create({
       userId: recipientId,
@@ -226,6 +228,7 @@ export const createTask = async (req, res, next) => {
       entityType: "task",
       entityId: savedTask._id,
       entityName: savedTask.title,
+      visibleTo: taskActivityAudience(savedTask, project, req.user.sub),
       metadata: {
         taskTitle: savedTask.title,
         assigneeName: assigneeName || "Unassigned",
@@ -245,6 +248,7 @@ export const createTask = async (req, res, next) => {
         type: "assignment",
         relatedEntityType: "task",
         relatedEntityId: savedTask._id,
+        actorId: req.user.sub,
         actorName: req.user.name,
         action: "assigned you to",
         entityName: savedTask.title,
@@ -321,6 +325,7 @@ export const updateTask = async (req, res, next) => {
       entityType: "task",
       entityId: task._id,
       entityName: task.title,
+      visibleTo: taskActivityAudience(task, project, req.user.sub),
       metadata: {
         taskTitle: task.title,
         assigneeName: assigneeName,
@@ -338,6 +343,7 @@ export const updateTask = async (req, res, next) => {
         type: "info",
         relatedEntityType: "task",
         relatedEntityId: task._id,
+        actorId: req.user.sub,
         actorName: req.user.name,
         action: "updated",
         entityName: task.title,
@@ -587,6 +593,7 @@ export const moveTaskStatus = async (req, res, next) => {
       entityType: "task",
       entityId: task._id,
       entityName: task.title,
+      visibleTo: taskActivityAudience(task, project, req.user.sub),
       metadata: {
         taskTitle: task.title,
         fromStatus: task.status,
@@ -604,19 +611,7 @@ export const moveTaskStatus = async (req, res, next) => {
         type: "info",
         relatedEntityType: "task",
         relatedEntityId: task._id,
-        actorName: req.user.name,
-        action: `moved to ${status}`,
-        entityName: task.title,
-      });
-    }
-
-    if (task.assigneeId && task.assigneeId.toString() === req.user.sub) {
-      await createAndEmitNotification(task.assigneeId, {
-        title: status === "Done" ? "Task Completed" : "Task Moved",
-        message: `You ${statusLabel} "${task.title}"`,
-        type: status === "Done" ? "success" : "info",
-        relatedEntityType: "task",
-        relatedEntityId: task._id,
+        actorId: req.user.sub,
         actorName: req.user.name,
         action: `moved to ${status}`,
         entityName: task.title,
@@ -646,6 +641,7 @@ export const addComment = async (req, res, next) => {
 
     // Log activity for comment regardless of who wrote it
     if (task) {
+      const project = task.projectId ? await Project.findById(task.projectId) : null;
       await logActivity({
         actorId: req.user.sub,
         actorName: req.user.name,
@@ -653,6 +649,7 @@ export const addComment = async (req, res, next) => {
         entityType: "task",
         entityId: task._id,
         entityName: task.title,
+        visibleTo: taskActivityAudience(task, project, req.user.sub),
         metadata: {
           taskTitle: task.title,
           commentPreview: content.length > 60 ? content.slice(0, 60) + "…" : content,
@@ -667,6 +664,7 @@ export const addComment = async (req, res, next) => {
           type: "info",
           relatedEntityType: "comment",
           relatedEntityId: task._id,
+          actorId: req.user.sub,
           actorName: req.user.name,
           action: "commented on",
           entityName: task.title,
@@ -687,6 +685,7 @@ export const addComment = async (req, res, next) => {
             type: "mention",
             relatedEntityType: "comment",
             relatedEntityId: task._id,
+            actorId: req.user.sub,
             actorName: req.user.name,
             action: "mentioned you on",
             entityName: task.title,

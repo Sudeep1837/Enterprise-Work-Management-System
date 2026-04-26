@@ -276,6 +276,40 @@ export const fetchActivity = createAsyncThunk(
   }
 );
 
+export const fetchTelemetry = createAsyncThunk(
+  "work/fetchTelemetry",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get("/activity?feed=telemetry");
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(getApiErrorMessage(err, "Failed to load workspace telemetry"));
+    }
+  },
+  {
+    condition: (options, { getState }) =>
+      shouldFetchCollection(getState(), "telemetry", "telemetryStatus", 30_000, options),
+  }
+);
+
+export const clearActivityFeedAsync = createAsyncThunk("work/clearActivityFeed", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete("/activity/clear");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear your activity feed"));
+  }
+});
+
+export const clearTelemetryFeedAsync = createAsyncThunk("work/clearTelemetryFeed", async (_, { rejectWithValue }) => {
+  try {
+    const response = await apiClient.delete("/activity/telemetry/clear");
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(getApiErrorMessage(err, "Failed to clear your telemetry feed"));
+  }
+});
+
 export const purgeActivityLogAsync = createAsyncThunk("work/purgeActivityLog", async (_, { rejectWithValue }) => {
   try {
     const response = await apiClient.delete("/activity/purge");
@@ -304,12 +338,14 @@ const initialState = {
   users: [],
   notifications: [],
   activity: [],
+  telemetry: [],
   status: "idle",
   projectsStatus: "idle",
   tasksStatus: "idle",
   usersStatus: "idle",
   notificationsStatus: "idle",
   activityStatus: "idle",
+  telemetryStatus: "idle",
   lastFetchedAt: {},
   error: null,
 };
@@ -385,15 +421,26 @@ const workSlice = createSlice({
     socketActivityCreated: (state, action) => {
       // Deduplicate and cap at 30 items
       const aid = action.payload.id || action.payload._id?.toString();
-      const exists = state.activity.some(
-        (a) => (a.id || a._id?.toString()) === aid
-      );
-      if (!exists) {
-        state.activity.unshift(action.payload);
-        if (state.activity.length > 30) {
-          state.activity = state.activity.slice(0, 30);
-        }
-      }
+      const upsertCapped = (items) => {
+        const exists = items.some((a) => (a.id || a._id?.toString()) === aid);
+        if (exists) return items;
+        return [action.payload, ...items].slice(0, 30);
+      };
+      state.activity = upsertCapped(state.activity);
+      state.telemetry = upsertCapped(state.telemetry);
+    },
+    clearActivityFeedSync: (state) => {
+      state.activity = [];
+    },
+    clearTelemetryFeedSync: (state) => {
+      state.telemetry = [];
+    },
+    socketActivityPurged: (state) => {
+      state.activity = [];
+      state.telemetry = [];
+    },
+    socketTelemetryPurged: (state) => {
+      state.telemetry = [];
     },
     // EC12: cross-session user sync — emitted by userController after admin update
     socketUserUpdated: (state, action) => {
@@ -420,12 +467,6 @@ const workSlice = createSlice({
     socketNotificationsPurged: (state) => {
       state.notifications = [];
     },
-    socketActivityPurged: (state) => {
-      state.activity = [];
-    },
-    socketTelemetryPurged: (state) => {
-      state.activity = [];
-    }
   },
   extraReducers: (builder) => {
     builder
@@ -616,11 +657,31 @@ const workSlice = createSlice({
         state.activityStatus = "failed";
         state.error = action.payload || action.error.message || "Failed to load activity";
       })
-      .addCase(purgeActivityLogAsync.fulfilled, (state) => {
+      .addCase(fetchTelemetry.pending, (state) => {
+        state.telemetryStatus = "loading";
+      })
+      .addCase(fetchTelemetry.fulfilled, (state, action) => {
+        state.telemetry = action.payload;
+        state.telemetryStatus = "succeeded";
+        if (!state.lastFetchedAt) state.lastFetchedAt = {};
+        state.lastFetchedAt.telemetry = Date.now();
+      })
+      .addCase(fetchTelemetry.rejected, (state, action) => {
+        state.telemetryStatus = "failed";
+        state.error = action.payload || action.error.message || "Failed to load workspace telemetry";
+      })
+      .addCase(clearActivityFeedAsync.fulfilled, (state) => {
         state.activity = [];
       })
-      .addCase(purgeTelemetryAsync.fulfilled, (state) => {
+      .addCase(clearTelemetryFeedAsync.fulfilled, (state) => {
+        state.telemetry = [];
+      })
+      .addCase(purgeActivityLogAsync.fulfilled, (state) => {
         state.activity = [];
+        state.telemetry = [];
+      })
+      .addCase(purgeTelemetryAsync.fulfilled, (state) => {
+        state.telemetry = [];
       });
   },
 });
@@ -637,6 +698,8 @@ export const {
   socketNotificationDeleted,
   socketActivityCreated,
   socketUserUpdated,
+  clearActivityFeedSync,
+  clearTelemetryFeedSync,
   clearNotificationsSync,
   socketNotificationsAllRead,
   socketNotificationsPurged,

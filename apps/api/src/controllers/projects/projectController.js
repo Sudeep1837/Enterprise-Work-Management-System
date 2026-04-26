@@ -9,6 +9,8 @@ import { isAdmin, isManager, isEmployee, canManageProject, canDeleteProject } fr
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 async function createAndEmitNotification(recipientId, payload) {
   if (!recipientId) return;
+  const actorId = payload.actorId?.toString();
+  if (actorId && actorId === recipientId.toString()) return;
   try {
     const notif = await Notification.create({ userId: recipientId, ...payload });
     emitToUser(recipientId.toString(), "notification:created", notif.toJSON());
@@ -116,6 +118,12 @@ export const createProject = async (req, res, next) => {
       entityType: "project",
       entityId: savedProject._id,
       entityName: savedProject.name,
+      visibleTo: uniqueObjectIds([
+        req.user.sub,
+        savedProject.ownerId,
+        savedProject.createdBy,
+        ...(savedProject.members || []),
+      ]),
       metadata: {
         projectName: savedProject.name,
         richText: `${req.user.name} created project "${savedProject.name}"`,
@@ -124,17 +132,6 @@ export const createProject = async (req, res, next) => {
 
     emitToAll("project:created", { project: serialized });
 
-    await createAndEmitNotification(req.user.sub, {
-      title: "Project Created",
-      message: `You created project "${savedProject.name}"`,
-      type: "success",
-      relatedEntityType: "project",
-      relatedEntityId: savedProject._id,
-      actorName: req.user.name,
-      action: "created project",
-      entityName: savedProject.name,
-    });
-
     if (savedProject.ownerId && savedProject.ownerId.toString() !== req.user.sub) {
       await createAndEmitNotification(savedProject.ownerId, {
         title: "New Project Assignment",
@@ -142,6 +139,7 @@ export const createProject = async (req, res, next) => {
         type: "assignment",
         relatedEntityType: "project",
         relatedEntityId: savedProject._id,
+        actorId: req.user.sub,
         actorName: req.user.name,
         action: "assigned you to project",
         entityName: savedProject.name,
@@ -192,6 +190,12 @@ export const updateProject = async (req, res, next) => {
       entityType: "project",
       entityId: project._id,
       entityName: project.name,
+      visibleTo: uniqueObjectIds([
+        req.user.sub,
+        project.ownerId,
+        project.createdBy,
+        ...(project.members || []),
+      ]),
       metadata: {
         projectName: project.name,
         status: project.status,
@@ -208,6 +212,7 @@ export const updateProject = async (req, res, next) => {
         type: "info",
         relatedEntityType: "project",
         relatedEntityId: project._id,
+        actorId: req.user.sub,
         actorName: req.user.name,
         action: "updated project",
         entityName: project.name,

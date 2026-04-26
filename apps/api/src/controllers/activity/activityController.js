@@ -1,17 +1,25 @@
 import ActivityLog from "../../models/ActivityLog.js";
-import { emitToAll } from "../../sockets/socketServer.js";
+import { emitToAll, emitToUser } from "../../sockets/socketServer.js";
 
 import User from "../../models/User.js";
 
 export const getActivities = async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
-    const { action, entityType, actorId } = req.query;
+    const { action, entityType, actorId, feed = "activity" } = req.query;
     
     let query = {};
     
     // RBAC Scoping
     const userId = req.user.sub || req.user._id;
+    const currentUser = await User.findById(userId).select("activityClearedAt telemetryClearedAt");
+    const clearedAt = feed === "telemetry"
+      ? currentUser?.telemetryClearedAt
+      : currentUser?.activityClearedAt;
+
+    if (clearedAt) {
+      query.createdAt = { $gt: clearedAt };
+    }
 
     if (req.user.role === "manager") {
       const teamUsers = await User.find({ managerId: userId }).select("_id");
@@ -38,6 +46,26 @@ export const getActivities = async (req, res, next) => {
       .limit(limit);
       
     res.json(activities);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearMyActivityFeed = async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.sub, { activityClearedAt: new Date() });
+    emitToUser(req.user.sub, "activity:cleared", { scope: "personal" });
+    res.json({ success: true, scope: "personal" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearMyTelemetryFeed = async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.sub, { telemetryClearedAt: new Date() });
+    emitToUser(req.user.sub, "telemetry:cleared", { scope: "personal" });
+    res.json({ success: true, scope: "personal" });
   } catch (error) {
     next(error);
   }

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { PageHeader, PageCard, Badge, Button, ConfirmDialog } from "../common/components/UI";
 import { InsightCard, DonutChartCard, MiniTrendChart, StripMetric } from "../common/components/Analytics";
-import { purgeTelemetryAsync } from "../../store/workSlice";
+import { clearTelemetryFeedAsync, purgeTelemetryAsync } from "../../store/workSlice";
 import {
   selectDashboardMetrics,
   selectWeeklyTrend,
@@ -170,9 +170,11 @@ export default function DashboardPage() {
   const bottleneck     = useSelector(selectBottleneckStage);
   const myTasks        = useSelector(selectMyTasks);
   const dueSoon        = useSelector(selectDueSoonTasks);
-  const activity       = useSelector((state) => state.work.activity);
+  const telemetry      = useSelector((state) => state.work.telemetry || []);
   const authUser       = useSelector((state) => state.auth.user);
+  const [confirmTelemetryClear, setConfirmTelemetryClear] = useState(false);
   const [confirmTelemetryPurge, setConfirmTelemetryPurge] = useState(false);
+  const [clearingTelemetry, setClearingTelemetry] = useState(false);
   const [purgingTelemetry, setPurgingTelemetry] = useState(false);
 
   const role           = authUser?.role || "employee";
@@ -183,6 +185,18 @@ export default function DashboardPage() {
   const recentProject   = [...projectHealth].sort(
     (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
   )[0];
+
+  const clearTelemetry = async () => {
+    setClearingTelemetry(true);
+    const result = await dispatch(clearTelemetryFeedAsync());
+    setClearingTelemetry(false);
+    setConfirmTelemetryClear(false);
+    if (result.error) {
+      toast.error(result.payload || "Failed to clear your telemetry feed");
+      return;
+    }
+    toast.success("Your telemetry feed was cleared");
+  };
 
   const purgeTelemetry = async () => {
     setPurgingTelemetry(true);
@@ -366,20 +380,32 @@ export default function DashboardPage() {
             subtitle="Live operational feed"
             className="min-h-[320px]"
             actions={
-              isAdmin && activity.length > 0 ? (
-                <Button
-                  variant="ghost"
-                  className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
-                  onClick={() => setConfirmTelemetryPurge(true)}
-                  disabled={purgingTelemetry}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {purgingTelemetry ? "Purging..." : "Clear Feed"}
-                </Button>
+              telemetry.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setConfirmTelemetryClear(true)}
+                    disabled={clearingTelemetry || purgingTelemetry}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {clearingTelemetry ? "Clearing..." : "Clear mine"}
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                      onClick={() => setConfirmTelemetryPurge(true)}
+                      disabled={purgingTelemetry || clearingTelemetry}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {purgingTelemetry ? "Purging..." : "Admin purge"}
+                    </Button>
+                  )}
+                </div>
               ) : null
             }
           >
-            {activity.length === 0 ? (
+            {telemetry.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                   <Radio className="h-6 w-6 text-slate-400 dark:text-slate-600" />
@@ -391,7 +417,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="relative mt-4 space-y-0 before:absolute before:inset-0 before:ml-[15px] before:h-full before:w-px before:bg-slate-200 dark:before:bg-slate-800">
-                {activity.slice(0, 10).map((item) => {
+                {telemetry.slice(0, 10).map((item) => {
                   // Determine icon + color by action type
                   let Icon = Activity;
                   let iconBg = "bg-slate-100 dark:bg-slate-800";
@@ -444,6 +470,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Workload Intelligence (Admin / Manager only) ─────────────────── */}
+      <ConfirmDialog
+        open={confirmTelemetryClear}
+        title="Clear your telemetry feed?"
+        message="This hides the current operational feed from your dashboard only. Other users' telemetry feeds are not affected."
+        onCancel={() => setConfirmTelemetryClear(false)}
+        onConfirm={clearTelemetry}
+      />
       <ConfirmDialog
         open={confirmTelemetryPurge}
         title="Purge workspace telemetry?"

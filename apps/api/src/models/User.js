@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema(
     active: { type: Boolean, default: true },
     status: { type: String, enum: ["online", "offline", "busy"], default: "offline" },
     lastActiveAt: { type: Date, default: Date.now },
+    activityClearedAt: { type: Date },
+    telemetryClearedAt: { type: Date },
   },
   {
     timestamps: true,

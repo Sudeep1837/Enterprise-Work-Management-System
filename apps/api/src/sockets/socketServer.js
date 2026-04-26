@@ -14,7 +14,9 @@ const DOMAIN_EVENTS = [
   "notifications:cleared",
   "notification:purged",
   "activity:created",
+  "activity:cleared",
   "activity:purged",
+  "telemetry:cleared",
   "telemetry:purged",
 ];
 

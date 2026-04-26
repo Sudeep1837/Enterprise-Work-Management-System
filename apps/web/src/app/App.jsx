@@ -4,12 +4,12 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useDispatch, useSelector } from "react-redux";
 import { 
-  fetchUsers, fetchProjects, fetchTasks, fetchNotifications, fetchActivity,
+  fetchUsers, fetchProjects, fetchTasks, fetchNotifications, fetchActivity, fetchTelemetry,
   socketProjectUpserted, socketProjectDeleted,
   socketTaskUpserted, socketTaskDeleted,
   socketCommentAdded, socketNotificationCreated, socketActivityCreated,
   socketUserUpdated,
-  clearNotificationsSync, socketNotificationDeleted,
+  clearActivityFeedSync, clearNotificationsSync, clearTelemetryFeedSync, socketNotificationDeleted,
   socketNotificationsAllRead, socketNotificationsPurged,
   socketActivityPurged, socketTelemetryPurged,
 } from "../store/workSlice";
@@ -52,6 +52,7 @@ function App() {
         dispatch(fetchTasks());
         dispatch(fetchNotifications());
         dispatch(fetchActivity());
+        dispatch(fetchTelemetry());
         return;
       }
 
@@ -115,7 +116,9 @@ function App() {
     });
 
     // EC12: user:updated — sync role/team/active state across all sessions
+    socket.on("activity:cleared", () => dispatch(clearActivityFeedSync()));
     socket.on("activity:purged", () => dispatch(socketActivityPurged()));
+    socket.on("telemetry:cleared", () => dispatch(clearTelemetryFeedSync()));
     socket.on("telemetry:purged", () => dispatch(socketTelemetryPurged()));
     socket.on("user:updated", (user) => dispatch(socketUserUpdated(user)));
     
