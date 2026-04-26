@@ -332,9 +332,10 @@ The frontend uses **Jest** with **React Testing Library** and `@testing-library/
 
 Current test suite:
 
-- 15 test files
-- 31 passing tests
-- Includes integration-style user flow coverage for authentication, route guards, protected routes, notifications, forms, Kanban selectors, Redux slices, and user-management UI behavior.
+- 18 test files
+- 37 passing tests
+- Includes integration-style user flow coverage for authentication, login to protected navigation, project creation, task assignment, route guards, protected routes, notifications, forms, Kanban selectors, Redux slices, and user-management UI behavior.
+- Explicitly covers loading and error states for authentication, including in-flight login UI and API error display.
 
 Run tests:
 
