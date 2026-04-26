@@ -1,11 +1,9 @@
-import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
-import { TASK_STATUSES } from "../../constants/roles";
 import { moveTaskStatus } from "../../store/workSlice";
 import { PageHeader, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
-import { selectKanbanMetrics } from "../../store/selectors";
+import { selectKanbanColumns, selectKanbanMetrics } from "../../store/selectors";
 import { Kanban, GripHorizontal, LayoutTemplate, Lock, Clock, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -16,16 +14,8 @@ export default function KanbanPage() {
   const projects = useSelector((state) => state.work.projects);
   const currentUser = useSelector((state) => state.auth.user);
   const kMetrics = useSelector(selectKanbanMetrics);
+  const grouped = useSelector(selectKanbanColumns);
   const dispatch = useDispatch();
-
-  const grouped = useMemo(
-    () =>
-      TASK_STATUSES.map((status) => ({
-        status,
-        tasks: tasks.filter((task) => task.status === status),
-      })),
-    [tasks]
-  );
 
   const kanbanSubtitle = isAdmin(currentUser)
     ? "Global task board — all workspace tasks"
@@ -193,9 +183,9 @@ function TaskCard({ task, isDraggable }) {
         )}
       </div>
 
-      {task.projectName && (
+      {(task.displayProjectName || task.projectName) && (
         <p className="mb-3 text-xs font-medium text-indigo-600 dark:text-indigo-400 truncate">
-          {task.projectName}
+          {task.displayProjectName || task.projectName}
         </p>
       )}
 
@@ -212,7 +202,9 @@ function TaskCard({ task, isDraggable }) {
       <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5">
           <User className="h-3.5 w-3.5" />
-          <span className="truncate max-w-[90px]">{task.assigneeName || "Unassigned"}</span>
+          <span className="truncate max-w-[90px]">
+            {task.displayAssigneeName || task.assigneeName || "Unassigned"}
+          </span>
         </div>
         {task.dueDate && (
           <div className={`flex items-center gap-1 ${isOverdue ? "text-red-500 font-medium" : ""}`}>

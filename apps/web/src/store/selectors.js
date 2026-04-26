@@ -8,6 +8,15 @@ const selectTasks = (state) => state.work.tasks;
 const selectUsers = (state) => state.work.users;
 const selectNotifications = (state) => state.work.notifications;
 
+const getEntityId = (entity) => {
+  if (!entity) return "";
+  if (typeof entity === "string") return entity;
+  return (entity.id || entity._id || "").toString();
+};
+
+const makeEntityMap = (items) =>
+  new Map((items || []).map((item) => [getEntityId(item), item]).filter(([id]) => Boolean(id)));
+
 // ─── Dashboard Metrics ────────────────────────────────────────────────────────
 export const selectDashboardMetrics = createSelector([selectProjects, selectTasks, selectNotifications], (projects, tasks, notifications) => {
   const now = new Date();
@@ -124,6 +133,30 @@ export const selectKanbanMetrics = createSelector([selectWork], (work) => {
     velocity: tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0,
   };
 });
+
+export const selectKanbanColumns = createSelector(
+  [selectTasks, selectProjects, selectUsers],
+  (tasks, projects, users) => {
+    const projectById = makeEntityMap(projects);
+    const userById = makeEntityMap(users);
+
+    const cards = tasks.map((task) => {
+      const project = projectById.get(getEntityId(task.projectId));
+      const assignee = userById.get(getEntityId(task.assigneeId));
+
+      return {
+        ...task,
+        displayProjectName: project?.name || task.projectName || "",
+        displayAssigneeName: assignee?.name || task.assigneeName || "Unassigned",
+      };
+    });
+
+    return TASK_STATUSES.map((status) => ({
+      status,
+      tasks: cards.filter((task) => task.status === status),
+    }));
+  }
+);
 
 // ─── Workload Metrics ─────────────────────────────────────────────────────────
 export const selectWorkloadMetrics = createSelector([selectUsers, selectTasks], (users, tasks) => {
