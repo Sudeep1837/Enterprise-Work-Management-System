@@ -326,16 +326,30 @@ npm run build -w apps/web
 npm start -w apps/api
 ```
 
-## Testing
+## Testing & Coverage
 
-The frontend uses **Jest** with **React Testing Library** and `@testing-library/user-event`.
+The frontend uses **Jest** with **React Testing Library** and `@testing-library/user-event`. The test suite focuses on meaningful business behavior across the Enterprise Work Management System, including authentication, role-based access control, protected routing, form validation, Redux state transitions, scoped UI rendering, realtime state updates, and realistic user workflows.
 
-Current test suite:
+Key coverage areas:
 
-- 18 test files
-- 37 passing tests
-- Covers more than 5 component/page areas, including Auth pages, Users, Projects, Tasks, Notifications, Password form, Command Palette, route guards, and protected routes.
-- Includes an integration-style user flow test for login -> create project -> assign task, plus additional coverage for authentication navigation, forms, Kanban selectors, Redux slices, and user-management UI behavior.
+- Authentication flows, login validation, signup validation, auth error handling, and protected route behavior.
+- Role-based access control for Admin, Manager, and Employee permissions.
+- Permission helper coverage for project, task, user, and assignment rules.
+- Form validation for task creation, project creation, user creation/editing, password updates, and due-date rules.
+- Scoped UI rendering for dashboard variants, users, tasks, projects, notifications, and employee-restricted workflows.
+- Redux Toolkit coverage for auth/work state transitions, async thunk behavior, socket-style realtime upserts, notification/activity deduping, and clearing activity feeds.
+- Integration-style user flows including login -> create project -> assign task and employee task execution with RBAC restrictions.
+
+Current quality metrics:
+
+```text
+Test Suites: 24 passed
+Tests:       57 passed
+Coverage:    62.41% statements
+Lint:        Passed for both web and API
+```
+
+Coverage is intentionally focused on critical business logic and user-facing behavior rather than shallow static markup tests, keeping the suite useful for regression protection and assignment evaluation.
 
 Run tests:
 
