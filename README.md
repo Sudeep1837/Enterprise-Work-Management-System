@@ -291,17 +291,17 @@ Production notes:
 
 ## Demo Credentials
 
-Seeded users from `apps/api/src/seed/seed.js`:
+Seeded demo users from `apps/api/src/seed/seed.js`:
 
 | Role | Name | Email | Password |
 | --- | --- | --- | --- |
-| Admin | Olivia Chen | `admin@demo.com` | `Admin@123` |
+| Admin | Sudeep Dehury | `admin@demo.com` | `Admin@123` |
 | Manager | Kunal Shah | `kunal.manager@demo.com` | `Manager@123` |
 | Manager | Priya Nair | `priya.manager@demo.com` | `Manager@123` |
 | Employee | Maya Patel | `maya.employee@demo.com` | `Employee@123` |
-| Employee | Ethan Brooks | `ethan.employee@demo.com` | `Employee@123` |
+| Employee | Akanksha Pradhan | `ethan.employee@demo.com` | `Employee@123` |
 | Employee | Anika Rao | `anika.employee@demo.com` | `Employee@123` |
-| Employee | Leo Martins | `leo.employee@demo.com` | `Employee@123` |
+| Employee | Aditya Kiran Pati | `leo.employee@demo.com` | `Employee@123` |
 
 ## Scripts
 
@@ -394,20 +394,7 @@ GET /api/health
 
 ## Screenshots
 
-The screenshots below represent the deployed application flows provided for submission. Save the supplied screenshots under `docs/screenshots/` using these filenames to render the gallery directly in GitHub:
-
-```text
-docs/screenshots/landing.png
-docs/screenshots/profile.png
-docs/screenshots/settings.png
-docs/screenshots/notifications.png
-docs/screenshots/activity.png
-docs/screenshots/reports.png
-docs/screenshots/kanban.png
-docs/screenshots/dashboard.png
-docs/screenshots/projects.png
-docs/screenshots/tasks.png
-```
+The screenshots below show the deployed application flows and are stored under `docs/screenshots/`.
 
 ### Landing Page
 
@@ -429,6 +416,10 @@ docs/screenshots/tasks.png
 
 ![Kanban board](docs/screenshots/kanban.png)
 
+### Users Management
+
+![Users management page](docs/screenshots/users.png)
+
 ### Reports and Analytics
 
 ![Reports analytics page](docs/screenshots/reports.png)
@@ -449,39 +440,26 @@ docs/screenshots/tasks.png
 
 ![Profile page](docs/screenshots/profile.png)
 
-## Assignment Criteria Mapping
 
-| Requirement | Status | Evidence |
-| --- | --- | --- |
-| UI/UX Design & Responsiveness | Satisfied | Tailwind-based responsive layouts, dark/light theme, animated premium UI, mobile Kanban refinements. |
-| Code Quality & Best Practices | Satisfied | ESM modules, feature-based frontend structure, Express route/controller/service layering, ESLint/Prettier, scoped permissions. |
-| Functionalities & Features | Satisfied | Auth, roles, dashboard, projects, tasks, Kanban, users, reports, notifications, settings, comments, attachments. |
-| State Management & Interactivity | Satisfied | Redux Toolkit async thunks/selectors, Socket.IO realtime events, React Router guards, interactive forms and drag/drop. |
-| Deployment & Documentation | Satisfied | Vercel frontend and Render backend links are documented, with setup, environment, testing, and deployment notes. |
-| JWT Authentication | Satisfied | Express auth routes, JWT utilities, protected frontend routes. |
-| Admin/Manager/Employee Roles | Satisfied | Backend permission helpers and frontend route/action guards. |
-| Dashboard Metrics | Satisfied | Dashboard selectors and analytics components. |
-| Project & Task Module | Satisfied | CRUD-style project/task workflows, assignment, delete, comments, attachments, priorities, due dates. |
-| Kanban Drag-and-Drop | Satisfied | `@dnd-kit` board with synced Redux task data. |
-| User Management | Satisfied | Admin/manager guarded users page and backend user routes. |
-| Reporting & Analytics | Satisfied | Recharts reports and dashboard chart components. |
-| Notifications/WebSockets | Satisfied | Socket.IO realtime events, notification UI, toast alerts. |
-| Settings/Profile | Satisfied | Theme toggle, profile edit, profile image, password change. |
-| Jest + React Testing Library | Satisfied | Jest config, RTL setup, 15 test files, 31 passing tests. |
-| Screenshots | Satisfied when image files are committed | README includes a screenshot gallery mapped to the provided app screenshots. |
 
 ## Known Limitations and Future Improvements
 
-- Commit the provided screenshot files under `docs/screenshots/` so the README gallery renders on GitHub.
 - API test coverage is lighter than frontend test coverage; future work could add backend integration tests for auth, RBAC, CORS, and task workflows.
 - The frontend production bundle currently emits a large chunk warning; code-splitting can be tuned further if required.
-- Admin/manager route visibility is implemented, while the highest-value future refinement would be documenting exact RBAC rules in a dedicated policy file.
+- Admin/manager route visibility is implemented, while a dedicated RBAC policy document would make the permission rules easier to audit and maintain.
 
 ## Submission Readiness
 
-The project is functionally strong and aligned with the assignment requirements. It is ready for submission after committing the provided screenshot image files:
+The project is functionally strong, deployed, documented, and ready for submission.
 
-1. Save and commit screenshots under `docs/screenshots/` using the filenames listed above.
+Final checks before sharing the repository:
+
+1. Confirm all screenshots are committed under `docs/screenshots/` using the filenames referenced in this README.
 2. Ensure deployed frontend environment variables point to the deployed backend:
    - `VITE_API_URL`
    - `VITE_SOCKET_URL`
+3. Verify the backend health route returns a successful response:
+
+```text
+GET /api/health
+```
