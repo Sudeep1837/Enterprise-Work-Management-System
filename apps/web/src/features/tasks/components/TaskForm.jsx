@@ -9,13 +9,25 @@ import { Button, EmptyState } from "../../common/components/UI";
 import { FolderKanban, Info } from "lucide-react";
 import { canAssignTaskToUser, isAdmin, isManager, isEmployee, canUseProjectForTask } from "../../../lib/permissions";
 
+const todayDateString = () => {
+  const today = new Date();
+  const offset = today.getTimezoneOffset() * 60000;
+  return new Date(today.getTime() - offset).toISOString().slice(0, 10);
+};
+
 const schema = yup.object({
   title: yup.string().required("Title is required"),
   projectId: yup.string().required("Project assignment is required"),
   status: yup.string().required(),
   priority: yup.string().required(),
   type: yup.string().required(),
-  dueDate: yup.string().nullable(),
+  dueDate: yup
+    .string()
+    .nullable()
+    .test("not-past", "Due date cannot be in the past.", (value) => {
+      if (!value) return true;
+      return value >= todayDateString();
+    }),
   assigneeId: yup.string().nullable(),
 });
 
@@ -97,7 +109,7 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
   };
 
   return (
-    <form className="grid gap-4" onSubmit={handleSubmit(handleCustomSubmit)}>
+    <form className="grid gap-4" noValidate onSubmit={handleSubmit(handleCustomSubmit)}>
       <TextInput label="Title" error={errors.title?.message} {...register("title")} />
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -132,7 +144,13 @@ export default function TaskForm({ initialValues, onSubmit, onCancel }) {
       </div>
 
       <div className="flex justify-between items-center gap-2 mt-4 border-t border-slate-100 dark:border-white/5 pt-4">
-        <TextInput type="date" label="Due date" {...register("dueDate")} />
+        <TextInput
+          type="date"
+          label="Due date"
+          min={todayDateString()}
+          error={errors.dueDate?.message}
+          {...register("dueDate")}
+        />
         <div className="flex gap-2 items-end">
           <Button variant="secondary" type="button" onClick={onCancel} disabled={isSubmitting}>
             Cancel

@@ -1,5 +1,5 @@
 import React from "react";
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TaskForm from "../features/tasks/components/TaskForm";
 import { renderWithProviders } from "../test-utils/renderWithProviders";
@@ -61,5 +61,36 @@ describe("TaskForm", () => {
     expect(within(assigneeSelect).queryByRole("option", { name: /asha admin/i })).not.toBeInTheDocument();
     expect(within(assigneeSelect).queryByRole("option", { name: /omar manager/i })).not.toBeInTheDocument();
     expect(within(assigneeSelect).queryByRole("option", { name: /inactive dev/i })).not.toBeInTheDocument();
+  });
+
+  test("prevents saving a task with a past due date", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const pastDate = yesterday.toISOString().slice(0, 10);
+
+    renderWithProviders(
+      <TaskForm
+        initialValues={{ status: "Todo", priority: "Medium", type: "Feature" }}
+        onSubmit={onSubmit}
+        onCancel={jest.fn()}
+      />,
+      {
+        preloadedState: {
+          auth: { user: manager, token: "token", initialized: true, status: "succeeded", error: null },
+          work: { theme: "light", ui: {}, projects: baseProjects, tasks: [], users: baseUsers, notifications: [], activity: [], status: "idle", error: null },
+        },
+      },
+    );
+
+    await user.type(screen.getByLabelText(/title/i), "Past due task");
+    await user.selectOptions(screen.getByLabelText(/assigned project/i), "proj-owned");
+    fireEvent.change(screen.getByLabelText(/due date/i), { target: { value: pastDate } });
+    await user.click(screen.getByRole("button", { name: /save task/i }));
+
+    expect(await screen.findByText(/due date cannot be in the past/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/due date/i)).toHaveAttribute("min");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

@@ -87,6 +87,52 @@ async function getEditableTask(req, res) {
   return { task, project };
 }
 
+function parseDueDate(value) {
+  if (!value) return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+  return new Date(value);
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function isPastDueDate(value) {
+  const dueDate = parseDueDate(value);
+  if (!dueDate || Number.isNaN(dueDate.getTime())) return false;
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate < startOfToday();
+}
+
+function sameDateValue(left, right) {
+  if (!left && !right) return true;
+  const leftDate = parseDueDate(left);
+  const rightDate = parseDueDate(right);
+  if (!leftDate || !rightDate || Number.isNaN(leftDate.getTime()) || Number.isNaN(rightDate.getTime())) {
+    return false;
+  }
+  return leftDate.toDateString() === rightDate.toDateString();
+}
+
+function validateDueDateInput(value, res) {
+  if (value === undefined || value === null || value === "") return true;
+  const dueDate = parseDueDate(value);
+  if (Number.isNaN(dueDate.getTime())) {
+    res.status(400).json({ message: "Due date is invalid." });
+    return false;
+  }
+  if (isPastDueDate(value)) {
+    res.status(400).json({ message: "Due date cannot be in the past." });
+    return false;
+  }
+  return true;
+}
+
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
 export const getTasks = async (req, res, next) => {
@@ -136,6 +182,8 @@ export const getTaskById = async (req, res, next) => {
 
 export const createTask = async (req, res, next) => {
   try {
+    if (!validateDueDateInput(req.body.dueDate, res)) return;
+
     // Assignment validation
     const { assigneeId, projectId } = req.body;
     let project = null;
@@ -224,6 +272,14 @@ export const updateTask = async (req, res, next) => {
 
     if (req.body.attachments !== undefined) {
       return res.status(400).json({ message: "Use the attachment upload/remove endpoints to manage files." });
+    }
+
+    if (
+      req.body.dueDate !== undefined &&
+      !sameDateValue(req.body.dueDate, task.dueDate) &&
+      !validateDueDateInput(req.body.dueDate, res)
+    ) {
+      return;
     }
 
     // Bug 2 fix: employee field whitelist — only status and attachments allowed

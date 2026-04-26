@@ -1,5 +1,14 @@
 import { useDispatch, useSelector } from "react-redux";
-import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { TASK_STATUSES } from "../../constants/roles";
 import { moveTaskStatus } from "../../store/workSlice";
 import { PageHeader, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
@@ -16,6 +25,34 @@ export default function KanbanPage() {
   const kMetrics = useSelector(selectKanbanMetrics);
   const grouped = useSelector(selectKanbanColumns);
   const dispatch = useDispatch();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
+    })
+  );
+
+  const moveTask = (taskId, status) => {
+    const task = tasks.find((t) => (t.id || t._id?.toString()) === taskId?.toString());
+    if (!task || task.status === status) return;
+
+    const project = projects.find(
+      (p) =>
+        (p.id || p._id?.toString()) ===
+        (task.projectId?._id?.toString() || task.projectId?.toString())
+    );
+
+    if (!canMoveTask(currentUser, task, project)) {
+      toast.error("You don't have permission to move this task.", {
+        toastId: `move-denied-${task.id || task._id}`,
+      });
+      return;
+    }
+
+    dispatch(moveTaskStatus({ id: taskId, status }));
+  };
 
   const kanbanSubtitle = isAdmin(currentUser)
     ? "Global task board — all workspace tasks"
@@ -47,33 +84,8 @@ export default function KanbanPage() {
         <StripMetric label="Velocity" value={kMetrics.velocity} sub="% Completed" />
       </MetricsStrip>
 
-      <DndContext
-        onDragEnd={({ active, over }) => {
-          if (!over) return;
-
-          const task = tasks.find((t) => (t.id || t._id?.toString()) === active.id?.toString());
-          if (!task) return;
-
-          const project = projects.find(
-            (p) =>
-              (p.id || p._id?.toString()) ===
-              (task.projectId?._id?.toString() || task.projectId?.toString())
-          );
-
-          if (!canMoveTask(currentUser, task, project)) {
-            toast.error("You don't have permission to move this task.", {
-              icon: "🔒",
-              toastId: `move-denied-${task.id}`, // prevent duplicate toasts
-            });
-            return;
-          }
-
-          if (task.status !== over.id) {
-            dispatch(moveTaskStatus({ id: active.id, status: over.id }));
-          }
-        }}
-      >
-        <div className="flex flex-1 gap-6 overflow-x-auto pb-4 pt-2">
+      <DndContext sensors={sensors} onDragEnd={({ active, over }) => over && moveTask(active.id, over.id)}>
+        <div className="flex flex-1 snap-x gap-4 overflow-x-auto overscroll-x-contain pb-4 pt-2 [-webkit-overflow-scrolling:touch] sm:gap-6">
           {grouped.map((col) => (
             <Column
               key={col.status}
@@ -81,6 +93,7 @@ export default function KanbanPage() {
               tasks={col.tasks}
               currentUser={currentUser}
               projects={projects}
+              onStatusChange={moveTask}
             />
           ))}
         </div>
@@ -89,11 +102,11 @@ export default function KanbanPage() {
   );
 }
 
-function Column({ status, tasks, currentUser, projects }) {
+function Column({ status, tasks, currentUser, projects, onStatusChange }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-2xl bg-slate-100/50 p-3 dark:bg-slate-900/40 border border-slate-200/50 dark:border-white/5 backdrop-blur-xl">
+    <div className="flex w-[82vw] max-w-80 shrink-0 snap-start flex-col rounded-2xl border border-slate-200/50 bg-slate-100/50 p-3 backdrop-blur-xl dark:border-white/5 dark:bg-slate-900/40 sm:w-80">
       <div className="mb-4 flex items-center justify-between px-2">
         <h3 className="font-semibold text-slate-900 dark:text-white tracking-tight">{status}</h3>
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200/50 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
@@ -115,7 +128,12 @@ function Column({ status, tasks, currentUser, projects }) {
           );
           const isDraggable = canMoveTask(currentUser, task, project);
           return (
-            <TaskCard key={task.id || task._id} task={task} isDraggable={isDraggable} />
+            <TaskCard
+              key={task.id || task._id}
+              task={task}
+              isDraggable={isDraggable}
+              onStatusChange={onStatusChange}
+            />
           );
         })}
         {tasks.length === 0 && (
@@ -128,7 +146,7 @@ function Column({ status, tasks, currentUser, projects }) {
   );
 }
 
-function TaskCard({ task, isDraggable }) {
+function TaskCard({ task, isDraggable, onStatusChange }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id || task._id,
     // Disable drag interaction for unauthorized tasks
@@ -147,8 +165,6 @@ function TaskCard({ task, isDraggable }) {
   return (
     <motion.div
       ref={setNodeRef}
-      {...(isDraggable ? listeners : {})}
-      {...(isDraggable ? attributes : {})}
       layoutId={task.id || task._id}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -156,7 +172,7 @@ function TaskCard({ task, isDraggable }) {
       }}
       className={`group relative rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all dark:border-white/10 dark:bg-slate-800
         ${isDraggable
-          ? "cursor-grab hover:shadow-md"
+          ? "hover:shadow-md"
           : "cursor-not-allowed opacity-70"
         }
         ${isDragging ? "shadow-2xl ring-2 ring-indigo-500/50 rotate-2 scale-105" : ""}
@@ -177,9 +193,15 @@ function TaskCard({ task, isDraggable }) {
           {task.title}
         </p>
         {isDraggable && (
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700">
+          <button
+            type="button"
+            aria-label={`Drag ${task.title}`}
+            {...listeners}
+            {...attributes}
+            className="flex h-9 w-9 shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 active:cursor-grabbing active:bg-slate-100 group-hover:opacity-100 dark:hover:bg-slate-700 sm:h-7 sm:w-7 sm:opacity-0"
+          >
             <GripHorizontal className="h-4 w-4 text-slate-400" />
-          </div>
+          </button>
         )}
       </div>
 
@@ -218,6 +240,22 @@ function TaskCard({ task, isDraggable }) {
           </div>
         )}
       </div>
+      {isDraggable && (
+        <label className="mt-3 block border-t border-slate-100 pt-3 text-xs font-medium text-slate-500 dark:border-white/5 dark:text-slate-400 sm:hidden">
+          Move to
+          <select
+            value={task.status}
+            onChange={(event) => onStatusChange(task.id || task._id, event.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            {TASK_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </motion.div>
   );
 }
