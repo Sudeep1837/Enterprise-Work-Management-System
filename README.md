@@ -29,7 +29,7 @@ The application is built as a JavaScript-only ESM monorepo with a React + Vite f
 ### Projects and Tasks
 
 - Create, edit, and manage projects.
-- Create, assign, edit, move, and archive tasks.
+- Create, assign, edit, move, and delete tasks.
 - Task types: Bug, Feature, and Improvement.
 - Priorities, due dates, comments, attachments, assignees, reporters, and project membership.
 - Cloudinary-backed profile images and task attachments.
@@ -380,7 +380,7 @@ Then reference them here:
 | JWT Authentication | Satisfied | Express auth routes, JWT utilities, protected frontend routes. |
 | Admin/Manager/Employee Roles | Satisfied | Backend permission helpers and frontend route/action guards. |
 | Dashboard Metrics | Satisfied | Dashboard selectors and analytics components. |
-| Project & Task Module | Satisfied | CRUD-style project/task workflows, assignment, archive, comments, attachments, priorities, due dates. |
+| Project & Task Module | Satisfied | CRUD-style project/task workflows, assignment, delete, comments, attachments, priorities, due dates. |
 | Kanban Drag-and-Drop | Satisfied | `@dnd-kit` board with synced Redux task data. |
 | User Management | Satisfied | Admin/manager guarded users page and backend user routes. |
 | Reporting & Analytics | Satisfied | Recharts reports and dashboard chart components. |
@@ -406,4 +406,3 @@ The project is functionally strong and aligned with the assignment requirements.
 3. Ensure deployed frontend environment variables point to the deployed backend:
    - `VITE_API_URL`
    - `VITE_SOCKET_URL`
-

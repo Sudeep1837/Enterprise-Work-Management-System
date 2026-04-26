@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { PageHeader, PageCard, EmptyState, Button, ConfirmDialog } from "../common/components/UI";
 import { clearActivityFeedAsync } from "../../store/workSlice";
-import { Activity, User, Briefcase, CheckSquare, Clock, Filter, X, Archive, Trash2 } from "lucide-react";
+import { Activity, User, Briefcase, CheckSquare, Clock, Filter, X, Trash2 } from "lucide-react";
 
 function relativeTime(dateStr) {
   if (!dateStr) return "";
@@ -38,7 +38,6 @@ export default function ActivityPage() {
   const getActivityIcon = (type, action = "") => {
     const normalized = action.toLowerCase();
     if (normalized.includes("deleted") || normalized.includes("removed")) return Trash2;
-    if (normalized.includes("archived")) return Archive;
     switch (type) {
       case "user": return User;
       case "project": return Briefcase;
@@ -51,7 +50,6 @@ export default function ActivityPage() {
     const normalized = action?.toLowerCase() || "";
     if (normalized.includes("created")) return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
     if (normalized.includes("deleted") || normalized.includes("removed")) return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
-    if (normalized.includes("archived")) return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     if (normalized.includes("updated") || normalized.includes("moved")) return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20";
     return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
   };
@@ -120,7 +118,6 @@ export default function ActivityPage() {
               <option value="created">Created</option>
               <option value="updated">Updated</option>
               <option value="deleted">Deleted</option>
-              <option value="archived">Archived</option>
             </select>
 
             {(filterType || filterAction) && (

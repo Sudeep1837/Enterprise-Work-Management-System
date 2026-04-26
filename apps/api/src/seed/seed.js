@@ -293,9 +293,9 @@ const runSeed = async () => {
     });
 
     tasks.portalCompleted = await createTask({
-      title: "Archive legacy onboarding copy",
+      title: "Retire legacy onboarding copy",
       description:
-        "Move deprecated onboarding copy and screenshots into the release archive for compliance reference.",
+        "Move deprecated onboarding copy and screenshots into the release records for compliance reference.",
       type: "task",
       status: "Done",
       priority: "Low",

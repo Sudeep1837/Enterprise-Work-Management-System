@@ -7,14 +7,14 @@ import { useRevealFocus } from "../../hooks/useRevealFocus";
 import { applyTextFilter, sortByField } from "../common/utils/filtering";
 import { ConfirmDialog, EmptyState, PageCard, PageHeader, Button, Badge } from "../common/components/UI";
 import { MetricsStrip, StripMetric } from "../common/components/Analytics";
-import { archiveTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
+import { deleteTaskAsync, createTask, updateTaskAsync, bulkUpdateTasksAsync } from "../../store/workSlice";
 import { selectDashboardMetrics } from "../../store/selectors";
 import TaskForm from "./components/TaskForm";
 import TaskDetailsDrawer from "./components/TaskDetailsDrawer";
 import EmployeeTaskUpdate from "./components/EmployeeTaskUpdate";
 import { buildTaskMutationPayload } from "./utils/taskPayload";
-import { Archive, CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
-import { canArchiveTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
+import { CheckSquare, Plus, Search, Clock, User, Sparkles, Lock } from "lucide-react";
+import { canDeleteTask, canUpdateTask, isEmployee, isAdmin, isManager } from "../../lib/permissions";
 
 export default function TasksPage() {
   const dispatch = useDispatch();
@@ -27,10 +27,9 @@ export default function TasksPage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updatedAt");
   const [editing, setEditing] = useState(null);
-  const [archiving, setArchiving] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [selected, setSelected] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkArchive, setBulkArchive] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
   const [newTaskId, setNewTaskId] = useState(null);
 
@@ -125,20 +124,19 @@ export default function TasksPage() {
       toast.error(result.payload || "Bulk update failed");
       return;
     }
-    const actionLabel = payload.archived ? "archived" : "updated";
-    toast.success(`${result.payload.length} task${result.payload.length === 1 ? "" : "s"} ${actionLabel}`);
+    toast.success(`${result.payload.length} task${result.payload.length === 1 ? "" : "s"} updated`);
     clearSelection();
   };
 
-  const archiveTask = async () => {
-    if (!archiving) return;
-    const result = await dispatch(archiveTaskAsync(archiving.id || archiving._id));
-    setArchiving(null);
+  const deleteTask = async () => {
+    if (!deleting) return;
+    const result = await dispatch(deleteTaskAsync(deleting.id || deleting._id));
+    setDeleting(null);
     if (result.error) {
-      toast.error(result.payload || "Failed to archive task");
+      toast.error(result.payload || "Failed to delete task");
       return;
     }
-    toast.success("Task archived");
+    toast.success("Task deleted");
   };
 
   return (
@@ -251,11 +249,6 @@ export default function TasksPage() {
                   {users.map((user) => <option key={user.id || user._id} value={user.id || user._id}>{user.name}</option>)}
                 </select>
               )}
-              {!isEmployee(currentUser) && (
-                <Button variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => setBulkArchive(true)}>
-                  <Archive className="h-4 w-4" /> Archive
-                </Button>
-              )}
               <Button variant="ghost" onClick={clearSelection}>Clear</Button>
             </div>
           )}
@@ -293,7 +286,7 @@ export default function TasksPage() {
                 const isNew = taskId === newTaskId;
                 const project = getProject(task);
                 const userCanEdit = canUpdateTask(currentUser, task, project);
-                const userCanArchive = canArchiveTask(currentUser, task, project);
+                const userCanDelete = canDeleteTask(currentUser, task, project);
 
                 return (
                   <motion.article
@@ -392,16 +385,16 @@ export default function TasksPage() {
                         </span>
                       )}
 
-                      {userCanArchive && (
+                      {userCanDelete && (
                         <Button
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setArchiving(task);
+                            setDeleting(task);
                           }}
-                          className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
                         >
-                          Archive
+                          Delete
                         </Button>
                       )}
                     </div>
@@ -414,21 +407,11 @@ export default function TasksPage() {
       </PageCard>
 
       <ConfirmDialog
-        open={Boolean(archiving)}
-        title="Archive task?"
-        message="This will archive the task and keep historical reporting intact."
-        onCancel={() => setArchiving(null)}
-        onConfirm={archiveTask}
-      />
-      <ConfirmDialog
-        open={bulkArchive}
-        title="Archive selected tasks?"
-        message="Selected tasks will be removed from active task views but retained for audit history."
-        onCancel={() => setBulkArchive(false)}
-        onConfirm={() => {
-          setBulkArchive(false);
-          runBulkUpdate({ archived: true });
-        }}
+        open={Boolean(deleting)}
+        title="Delete task?"
+        message="This permanently deletes the task, its comments, notifications, and attachment records. This action cannot be undone."
+        onCancel={() => setDeleting(null)}
+        onConfirm={deleteTask}
       />
       <TaskDetailsDrawer
         task={tasks.find((item) => item.id === selected || item._id?.toString() === selected)}

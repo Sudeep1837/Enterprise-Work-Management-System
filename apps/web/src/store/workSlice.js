@@ -128,12 +128,12 @@ export const moveTaskStatus = createAsyncThunk("work/moveTaskStatus", async ({ i
   }
 });
 
-export const archiveTaskAsync = createAsyncThunk("work/archiveTask", async (id, { rejectWithValue }) => {
+export const deleteTaskAsync = createAsyncThunk("work/deleteTask", async (id, { rejectWithValue }) => {
   try {
     const response = await apiClient.delete(`/tasks/${id}`);
     return response.data || { id };
   } catch (err) {
-    return rejectWithValue(getApiErrorMessage(err, "Failed to archive task"));
+    return rejectWithValue(getApiErrorMessage(err, "Failed to delete task"));
   }
 });
 
@@ -506,7 +506,7 @@ const workSlice = createSlice({
         const task = state.tasks.find((t) => t.id === action.payload.id);
         if (task) Object.assign(task, action.payload);
       })
-      .addCase(archiveTaskAsync.fulfilled, (state, action) => {
+      .addCase(deleteTaskAsync.fulfilled, (state, action) => {
         const payload = action.payload || {};
         const taskId = typeof payload === "string" ? payload : payload.id;
         state.tasks = state.tasks.filter((t) => (t.id || t._id?.toString()) !== taskId);
@@ -514,10 +514,6 @@ const workSlice = createSlice({
       .addCase(bulkUpdateTasksAsync.fulfilled, (state, action) => {
         action.payload.forEach((updatedTask) => {
           const index = state.tasks.findIndex((t) => (t.id || t._id?.toString()) === updatedTask.id);
-          if (updatedTask.archived) {
-            if (index !== -1) state.tasks.splice(index, 1);
-            return;
-          }
           if (index !== -1) state.tasks[index] = updatedTask;
         });
       })

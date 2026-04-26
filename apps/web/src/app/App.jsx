@@ -73,7 +73,7 @@ function App() {
     socket.on("task:updated", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("task:moved", (task) => dispatch(socketTaskUpserted(task)));
     socket.on("comment:added", (comment) => dispatch(socketCommentAdded(comment)));
-    socket.on("task:archived", (payload) => dispatch(socketTaskDeleted(payload)));
+    socket.on("task:deleted", (payload) => dispatch(socketTaskDeleted(payload)));
 
     socket.on("notification:created", (payload) => {
       dispatch(socketNotificationCreated(payload));

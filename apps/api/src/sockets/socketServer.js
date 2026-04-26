@@ -7,7 +7,7 @@ const DOMAIN_EVENTS = [
   "task:created",
   "task:updated",
   "task:moved",
-  "task:archived",
+  "task:deleted",
   "comment:added",
   "notification:created",
   "notification:deleted",

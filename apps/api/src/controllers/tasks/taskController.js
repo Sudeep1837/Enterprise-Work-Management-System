@@ -5,7 +5,7 @@ import Notification from "../../models/Notification.js";
 import Project from "../../models/Project.js";
 import User from "../../models/User.js";
 import { emitToUser, emitToAll } from "../../sockets/socketServer.js";
-import { canUpdateTask, canMoveTask, canArchiveTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
+import { canUpdateTask, canMoveTask, canDeleteTask, canAssignTaskToUser, canViewTask, isEmployee, isManager, canManageProject } from "../../utils/authUtils.js";
 import {
   deleteCloudinaryAsset,
   getCloudinaryDownloadUrl,
@@ -139,14 +139,13 @@ function validateDueDateInput(value, res) {
 
 export const getTasks = async (req, res, next) => {
   try {
-    let query = { archived: req.query.archived === "true" };
+    let query = {};
 
     if (isManager(req.user)) {
       // Manager sees: tasks in their owned projects + tasks they reported or are assigned
       const ownedProjects = await Project.find({ ownerId: req.user.sub }).select("_id");
       const ownedProjectIds = ownedProjects.map((p) => p._id);
       query = {
-        archived: req.query.archived === "true",
         $or: [
           { projectId: { $in: ownedProjectIds } },
           { reporterId: req.user.sub },
@@ -155,7 +154,7 @@ export const getTasks = async (req, res, next) => {
       };
     } else if (isEmployee(req.user)) {
       // Employee sees only tasks assigned to them
-      query = { archived: req.query.archived === "true", assigneeId: req.user.sub };
+      query = { assigneeId: req.user.sub };
     }
     // Admin: query = {} → all tasks
 
@@ -442,7 +441,7 @@ export const removeAttachment = async (req, res, next) => {
   }
 };
 
-export const archiveTask = async (req, res, next) => {
+export const deleteTask = async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -450,19 +449,16 @@ export const archiveTask = async (req, res, next) => {
     let project = null;
     if (task.projectId) project = await Project.findById(task.projectId);
 
-    if (!canArchiveTask(req.user, task, project)) {
-      return res.status(403).json({ message: "You do not have permission to archive this task." });
+    if (!canDeleteTask(req.user, task, project)) {
+      return res.status(403).json({ message: "You do not have permission to delete this task." });
     }
 
-    const archivedTask = await Task.findByIdAndUpdate(req.params.id, {
-      archived: true,
-      archivedAt: new Date(),
-      archivedBy: req.user.sub,
-    }, { new: true });
+    const taskJson = task.toJSON();
+
     await logActivity({
       actorId: req.user.sub,
       actorName: req.user.name,
-      action: "Task Archived",
+      action: "Task Deleted",
       entityType: "task",
       entityId: task._id,
       entityName: task.title,
@@ -470,16 +466,29 @@ export const archiveTask = async (req, res, next) => {
       metadata: {
         taskTitle: task.title,
         projectName: task.projectName || project?.name || "",
-        richText: `${req.user.name} archived task "${task.title}"`,
+        richText: `${req.user.name} deleted task "${task.title}"`,
       },
     });
-    emitToAll("task:archived", {
+
+    await Promise.all(
+      (task.attachments || [])
+        .filter((attachment) => attachment.publicId)
+        .map((attachment) =>
+          deleteCloudinaryAsset(attachment.publicId, attachment.resourceType || "auto").catch((error) => {
+            console.warn(`Failed to delete attachment ${attachment.publicId}: ${error.message}`);
+          })
+        )
+    );
+    await Comment.deleteMany({ taskId: task._id });
+    await Notification.deleteMany({ relatedEntityType: "task", relatedEntityId: task._id });
+    await Task.findByIdAndDelete(req.params.id);
+
+    emitToAll("task:deleted", {
       id: req.params.id,
-      task: archivedTask.toJSON(),
-      archived: true,
+      task: taskJson,
       projectId: task.projectId?.toString(),
     });
-    res.json({ message: "Task archived successfully", id: req.params.id });
+    res.json({ message: "Task deleted successfully", id: req.params.id });
   } catch (error) {
     next(error);
   }
@@ -487,7 +496,7 @@ export const archiveTask = async (req, res, next) => {
 
 export const bulkUpdateTasks = async (req, res, next) => {
   try {
-    const { ids = [], status, assigneeId, assigneeName, archived } = req.body;
+    const { ids = [], status, assigneeId, assigneeName } = req.body;
     const taskIds = [...new Set(ids)].filter(Boolean);
     if (!taskIds.length) return res.status(400).json({ message: "Select at least one task." });
 
@@ -500,12 +509,6 @@ export const bulkUpdateTasks = async (req, res, next) => {
       updates.assigneeId = assigneeId || null;
       updates.assigneeName = assigneeName || "";
     }
-    if (archived === true) {
-      updates.archived = true;
-      updates.archivedAt = new Date();
-      updates.archivedBy = req.user.sub;
-    }
-
     if (!Object.keys(updates).length) {
       return res.status(400).json({ message: "No bulk update action was provided." });
     }
@@ -513,10 +516,7 @@ export const bulkUpdateTasks = async (req, res, next) => {
     const allowedTasks = [];
     for (const task of tasks) {
       const project = task.projectId ? await Project.findById(task.projectId) : null;
-      const requiresDelete = archived === true;
-      const allowed = requiresDelete
-        ? canArchiveTask(req.user, task, project)
-        : canUpdateTask(req.user, task, project);
+      const allowed = canUpdateTask(req.user, task, project);
       if (!allowed) continue;
 
       if (assigneeId !== undefined && assigneeId) {
@@ -537,7 +537,7 @@ export const bulkUpdateTasks = async (req, res, next) => {
     await logActivity({
       actorId: req.user.sub,
       actorName: req.user.name,
-      action: archived === true ? "Tasks Archived" : "Tasks Bulk Updated",
+      action: "Tasks Bulk Updated",
       entityType: "task",
       entityName: `${updated.length} tasks`,
       visibleTo: uniqueObjectIds([
@@ -548,17 +548,12 @@ export const bulkUpdateTasks = async (req, res, next) => {
         count: updated.length,
         status,
         assigneeName,
-        richText: `${req.user.name} ${archived === true ? "archived" : "bulk updated"} ${updated.length} task${updated.length === 1 ? "" : "s"}`,
+        richText: `${req.user.name} bulk updated ${updated.length} task${updated.length === 1 ? "" : "s"}`,
       },
     });
 
     updated.forEach((task) => {
-      emitToAll(
-        archived === true ? "task:archived" : "task:updated",
-        archived === true
-          ? { id: task.id, task: task.toJSON(), archived: true, projectId: task.projectId?.toString() }
-          : task.toJSON()
-      );
+      emitToAll("task:updated", task.toJSON());
     });
 
     res.json(updated.map((task) => task.toJSON()));

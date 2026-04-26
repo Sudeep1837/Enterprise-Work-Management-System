@@ -9,7 +9,7 @@ import { canUpdateTask } from "../../../lib/permissions";
 import {
   X, Paperclip, MessageSquare, Send, User, Calendar,
   FolderKanban, AlertTriangle, Tag, Clock, CheckCircle2,
-  Download, ExternalLink, Trash2, FileText, Image, FileArchive, Loader2,
+  Download, ExternalLink, Trash2, FileText, Image, Loader2,
 } from "lucide-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ function formatFileSize(size) {
 
 function getAttachmentIcon(type = "") {
   if (type.startsWith("image/")) return Image;
-  if (type.includes("zip") || type.includes("compressed")) return FileArchive;
+  if (type.includes("zip") || type.includes("compressed")) return FileText;
   return FileText;
 }
 
