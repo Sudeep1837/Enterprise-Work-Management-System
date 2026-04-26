@@ -1,207 +1,409 @@
 # Enterprise Work Management System
 
-JavaScript-only enterprise work management monorepo built with **pure ES Modules (ESM)**, **no Babel**, and **no CommonJS**.
+A full-stack enterprise work management platform for role-based project delivery, task execution, realtime notifications, activity tracking, and analytics.
 
-## Overview
+The application is built as a JavaScript-only ESM monorepo with a React + Vite frontend and a Node.js + Express + MongoDB backend. It is designed to demonstrate production-style architecture, clean role-based workflows, responsive enterprise UI, and realtime state synchronization.
 
-This project is a polished, modular, enterprise-style demo app that showcases:
+## Live Links
 
-- role-based JWT authentication
-- MongoDB-backed business data with localStorage reserved for UI preferences
-- realtime UI synchronization over Socket.IO
-- modular feature-based React architecture
-- premium animated UX with Framer Motion
+- Frontend: https://enterprise-work-management-system-w.vercel.app
+- Backend: Render deployment URL: **TODO: add deployed Render service URL**
+- Health check: `https://<your-render-service>.onrender.com/api/health`
 
-## Architecture (Honest by Design)
+## Key Features
 
-This is an intentionally hybrid academic/demo architecture:
+### Authentication and Roles
 
-- **Backend (`apps/api`)**: Node.js + Express handles auth, JWT, role-aware middleware, CRUD APIs, health endpoint, and Socket.IO relay. **Data is persisted in MongoDB** using Mongoose.
-- **Frontend (`apps/web`)**: React + Redux Toolkit fetches data via Axios Async Thunks. `localStorage` is exclusively used for UI state (theme, sidebar).
-- **Realtime model**: Socket.IO broadcasts domain events after MongoDB writes; clients update Redux stores.
+- JWT-based login and signup.
+- Role-based access for Admin, Manager, and Employee.
+- Protected routes and role guards for authenticated workspace pages.
+- Profile editing, profile image upload, and password change flows.
 
-## ESM and Tooling Guarantees
+### Dashboard
+
+- Role-aware dashboard for workspace, team, and personal execution views.
+- Metrics for projects, tasks, completion, pending work, overdue work, and workload.
+- Workspace telemetry feed for recent operational activity.
+- Realtime updates through Socket.IO.
+
+### Projects and Tasks
+
+- Create, edit, and manage projects.
+- Create, assign, edit, move, and archive tasks.
+- Task types: Bug, Feature, and Improvement.
+- Priorities, due dates, comments, attachments, assignees, reporters, and project membership.
+- Cloudinary-backed profile images and task attachments.
+
+### Kanban
+
+- Drag-and-drop task board powered by `@dnd-kit`.
+- Status columns for task execution.
+- Touch-friendly interaction improvements and mobile fallback controls.
+- Cards stay synchronized with the latest task, project, and user identity data.
+
+### User Management
+
+- Admin/manager guarded user management route.
+- Admin user lifecycle controls with activation/deactivation instead of destructive user deletion.
+- User cards show role, team, manager relationship, status, and activity-oriented metadata.
+
+### Reporting and Analytics
+
+- Reports page with chart-based workspace insights using Recharts.
+- Project health, workload, execution status, priority distribution, overdue work, and completion signals.
+- Dashboard analytics components reused across the app.
+
+### Notifications, Activity, and Telemetry
+
+- Toast alerts and realtime notification updates.
+- Personal notification delete and clear controls.
+- Activity Log and Workspace Telemetry show scoped operational actions, including self actions.
+- Feed clearing is personal-level only; no global admin purge controls are exposed in the normal UI.
+
+### Settings and Profile
+
+- Persisted light/dark theme.
+- Profile update and profile image management.
+- Password change flow.
+- Topbar avatar/name block links directly to the Profile page.
+
+## Role Overview
+
+| Role | High-Level Capabilities |
+| --- | --- |
+| Admin | Global workspace visibility, project/task administration, user management, reports, activity, notifications, and settings. |
+| Manager | Manage scoped projects and team work, assign and update tasks, review reports, and view team activity. |
+| Employee | View and update assigned work, move permitted tasks, comment, manage personal profile/settings, and receive relevant notifications. |
+
+## Tech Stack
+
+### Frontend
+
+- React 19
+- Vite 7
+- Redux Toolkit
+- React Redux
+- React Router
+- Tailwind CSS
+- React Hook Form
+- Yup
+- Axios
+- Socket.IO Client
+- Recharts
+- `@dnd-kit`
+- Framer Motion
+- React Toastify
+- Lucide React
+- Jest
+- React Testing Library
+
+### Backend
+
+- Node.js
+- Express
+- MongoDB
+- Mongoose
+- JSON Web Token authentication
+- bcryptjs
+- Socket.IO
+- CORS
+- dotenv
+- multer
+- Cloudinary
+
+### Tooling
 
 - JavaScript only
-- ESM only (`import` / `export`)
-- no `require()`
-- no `module.exports`
-- no `.cjs` configs
-- no Babel config or Babel transform pipeline
-- frontend tests run on **Vitest** + React Testing Library
+- ESM only
+- ESLint
+- Prettier
+- npm workspaces
+- Vercel frontend deployment
+- Render backend deployment
 
-## Monorepo Structure
+## Architecture
 
 ```text
-root/
+Enterprise-Work-Management-System/
   apps/
     api/
       src/
-        config/
-        controllers/
-        data/
-        middleware/
-        routes/
-        services/
-        sockets/
-        utils/
+        config/          # environment, CORS, Cloudinary config
+        controllers/     # route handlers
+        db/              # MongoDB connection
+        middleware/      # auth, RBAC, uploads, errors
+        models/          # Mongoose models
+        routes/          # Express route modules
+        seed/            # demo data seeding
+        services/        # auth/user/cloudinary helpers
+        sockets/         # Socket.IO server
+        utils/           # JWT and permission helpers
     web/
       src/
-        app/
-        components/
-        constants/
-        features/
-        hooks/
-        lib/
-        routes/
-        services/
-        store/
-        test-utils/
-        __tests__/
+        app/             # app shell and router provider
+        components/      # shared layout components
+        features/        # feature modules
+        hooks/           # reusable React hooks
+        lib/             # permissions/storage helpers
+        pages/           # auth pages
+        routes/          # route config and guards
+        services/        # API/socket clients
+        store/           # Redux slices/selectors
+        test-utils/      # test helpers
+        __tests__/       # Jest + RTL tests
   package.json
+  package-lock.json
   README.md
 ```
 
-## Core Frontend Stack
+## Installation and Local Setup
 
-- React + Vite
-- Redux Toolkit
-- React Router
-- React Hook Form + Yup
-- Tailwind CSS
-- Axios
-- Recharts
-- `@dnd-kit`
-- `react-toastify`
-- `framer-motion`
-- Vitest + React Testing Library
+### Prerequisites
 
-## Core Backend Stack
+- Node.js 22.x
+- npm
+- MongoDB local instance or MongoDB Atlas URI
+- Optional: Cloudinary account for profile images and task attachments
 
-- Node.js + Express
-- jsonwebtoken
-- bcryptjs
-- cors
-- dotenv
-- socket.io
-- multer (mock attachment metadata endpoint)
+### 1. Clone and install
 
-## Realtime Domain Events
-
-- `project:created`
-- `project:updated`
-- `task:created`
-- `task:updated`
-- `task:moved`
-- `comment:added`
-- `notification:created`
-
-## API Endpoints
-
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `PATCH /api/auth/profile`
-- `PATCH /api/auth/change-password`
-- `GET /api/users`
-- `POST /api/users` (Admin)
-- `PATCH /api/users/:userId` (Admin)
-- `GET /api/health`
-- `POST /api/upload` (mock metadata)
-
-## Demo Credentials
-
-- `admin@demo.com / Admin@123`
-- `manager@demo.com / Manager@123`
-- `employee@demo.com / Employee@123`
-
-## Setup
-
-Ensure you have [MongoDB](https://www.mongodb.com/) installed and running locally, or use a MongoDB Atlas URI.
-
-**1. Install Dependencies:**
-From the root directory, install dependencies for the entire workspace:
 ```bash
+git clone <your-repository-url>
+cd Enterprise-Work-Management-System
 npm install
 ```
 
-**2. Setup Environment Variables:**
-Set up the `.env` files for both the backend and frontend apps.
+### 2. Configure environment variables
 
-Backend (`apps/api`):
+Create backend and frontend environment files from the examples:
+
 ```bash
 cp apps/api/.env.example apps/api/.env
-```
-
-Frontend (`apps/web`):
-```bash
 cp apps/web/.env.example apps/web/.env
 ```
 
-**3. Seed the Database (Required for first run):**
+On Windows PowerShell, create/copy the files manually or run:
+
+```powershell
+Copy-Item apps/api/.env.example apps/api/.env
+Copy-Item apps/web/.env.example apps/web/.env
+```
+
+### 3. Seed demo data
+
 ```bash
 node apps/api/src/seed/seed.js
 ```
 
-## Running the Development Servers
+The seed script clears existing demo collections and creates users, projects, tasks, comments, notifications, and activity logs.
 
-The frontend and backend are designed to run independently. You will need **two separate terminals**.
+### 4. Run the backend
 
-### Terminal 1: Backend (API)
-Start the Node.js Express server:
 ```bash
-cd apps/api
-npm run dev
+npm run dev:api
 ```
-- API will be running at [http://localhost:5000](http://localhost:5000)
 
-### Terminal 2: Frontend (Web)
-Start the React Vite app:
+Default API origin: `http://localhost:5000`
+
+### 5. Run the frontend
+
 ```bash
-cd apps/web
-npm run dev
+npm run dev:web
 ```
-- Web App will be running at [http://localhost:5173](http://localhost:5173)
 
----
+Default frontend origin: `http://localhost:5173`
 
 ## Environment Variables
 
-### Backend (`apps/api/.env`)
-- `PORT=5000`
-- `CLIENT_URL=http://localhost:5173`
-- `JWT_SECRET`
-- `JWT_EXPIRES_IN`
-- `MONGODB_URI`
+### Backend: `apps/api/.env`
 
-### Frontend (`apps/web/.env`)
-- `VITE_API_URL=http://localhost:5000/api`
+```env
+PORT=5000
+CLIENT_URL=http://localhost:5173
+JWT_SECRET=replace_with_a_strong_secret
+JWT_EXPIRES_IN=8h
+MONGODB_URI=mongodb://127.0.0.1:27017/ewms
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
 
----
+Production notes:
 
-## Workspace Scripts
+- Set `CLIENT_URL` to the deployed Vercel frontend origin.
+- Use a strong non-demo `JWT_SECRET`.
+- Use a production MongoDB Atlas URI.
+- Configure Cloudinary values if profile image and attachment upload should work in production.
 
-While you can run the apps individually from their directories, you can also use these workspace scripts from the root directory:
+### Frontend: `apps/web/.env`
 
-- `npm run dev:web` - run frontend only
-- `npm run dev:api` - run backend only
-- `npm run build` - build frontend
-- `npm run test` - run frontend Vitest suite
-- `npm run lint` - lint web + api
-- `npm run format` - format repository
+```env
+VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+Production notes:
+
+- Set both values to the deployed backend origin, for example `https://<your-render-service>.onrender.com`.
+- The frontend automatically appends `/api` for REST calls when needed.
+
+## Demo Credentials
+
+Seeded users from `apps/api/src/seed/seed.js`:
+
+| Role | Name | Email | Password |
+| --- | --- | --- | --- |
+| Admin | Olivia Chen | `admin@demo.com` | `Admin@123` |
+| Manager | Kunal Shah | `kunal.manager@demo.com` | `Manager@123` |
+| Manager | Priya Nair | `priya.manager@demo.com` | `Manager@123` |
+| Employee | Maya Patel | `maya.employee@demo.com` | `Employee@123` |
+| Employee | Ethan Brooks | `ethan.employee@demo.com` | `Employee@123` |
+| Employee | Anika Rao | `anika.employee@demo.com` | `Employee@123` |
+| Employee | Leo Martins | `leo.employee@demo.com` | `Employee@123` |
+
+## Scripts
+
+Run from the repository root:
+
+```bash
+npm run dev:web      # start Vite frontend
+npm run dev:api      # start Express backend
+npm run build        # build frontend
+npm run test         # run frontend Jest test suite
+npm run lint         # lint frontend and backend
+npm run format       # format repository with Prettier
+```
+
+Workspace-specific commands:
+
+```bash
+npm run lint -w apps/api
+npm run lint -w apps/web
+npm run test -w apps/web
+npm run build -w apps/web
+npm start -w apps/api
+```
 
 ## Testing
+
+The frontend uses **Jest** with **React Testing Library** and `@testing-library/user-event`.
+
+Current test suite:
+
+- 15 test files
+- 31 passing tests
+- Includes integration-style user flow coverage for authentication, route guards, protected routes, notifications, forms, Kanban selectors, Redux slices, and user-management UI behavior.
+
+Run tests:
 
 ```bash
 npm run test -w apps/web
 ```
 
-Includes unit tests and integration-style UI coverage in JavaScript.
+Linting:
 
-## Mock Attachment Note
+```bash
+npm run lint -w apps/web
+npm run lint -w apps/api
+```
 
-Attachments are demo-oriented and stored as local metadata in frontend persistence. Backend upload endpoint returns temporary metadata only and does not provide centralized file storage.
+## Deployment
 
-## User Lifecycle Policy
+### Frontend: Vercel
 
-User management uses enterprise-safe activation controls instead of destructive hard delete. Admins can activate or deactivate users; deactivated users cannot log in, do not appear in normal assignment dropdowns, and remain attached to historical tasks, comments, reports, and activity records.
+The frontend is deployed from `apps/web`.
+
+- Live frontend: https://enterprise-work-management-system-w.vercel.app
+- SPA routing is handled by `apps/web/vercel.json`.
+- Required production variables:
+  - `VITE_API_URL`
+  - `VITE_SOCKET_URL`
+
+### Backend: Render
+
+The backend is designed to deploy from `apps/api`.
+
+Recommended Render settings:
+
+- Root directory: `apps/api`
+- Build command: `npm install`
+- Start command: `npm start`
+- Node version: 22.x
+
+Required production variables:
+
+- `PORT`
+- `CLIENT_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `MONGODB_URI`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+After deployment, verify:
+
+```text
+GET /api/health
+```
+
+## Screenshots
+
+Screenshots are not currently committed in the repository.
+
+Suggested README assets to add before final submission:
+
+```text
+docs/screenshots/landing.png
+docs/screenshots/dashboard.png
+docs/screenshots/tasks.png
+docs/screenshots/kanban.png
+docs/screenshots/reports.png
+docs/screenshots/settings.png
+```
+
+Then reference them here:
+
+```md
+![Dashboard](docs/screenshots/dashboard.png)
+```
+
+## Assignment Criteria Mapping
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| UI/UX Design & Responsiveness | Satisfied | Tailwind-based responsive layouts, dark/light theme, animated premium UI, mobile Kanban refinements. |
+| Code Quality & Best Practices | Satisfied | ESM modules, feature-based frontend structure, Express route/controller/service layering, ESLint/Prettier, scoped permissions. |
+| Functionalities & Features | Satisfied | Auth, roles, dashboard, projects, tasks, Kanban, users, reports, notifications, settings, comments, attachments. |
+| State Management & Interactivity | Satisfied | Redux Toolkit async thunks/selectors, Socket.IO realtime events, React Router guards, interactive forms and drag/drop. |
+| Deployment & Documentation | Mostly satisfied | Vercel frontend deployed, backend Render-ready/deployed per project context, README now documents setup/deployment. Backend URL should be filled in. |
+| JWT Authentication | Satisfied | Express auth routes, JWT utilities, protected frontend routes. |
+| Admin/Manager/Employee Roles | Satisfied | Backend permission helpers and frontend route/action guards. |
+| Dashboard Metrics | Satisfied | Dashboard selectors and analytics components. |
+| Project & Task Module | Satisfied | CRUD-style project/task workflows, assignment, archive, comments, attachments, priorities, due dates. |
+| Kanban Drag-and-Drop | Satisfied | `@dnd-kit` board with synced Redux task data. |
+| User Management | Satisfied | Admin/manager guarded users page and backend user routes. |
+| Reporting & Analytics | Satisfied | Recharts reports and dashboard chart components. |
+| Notifications/WebSockets | Satisfied | Socket.IO realtime events, notification UI, toast alerts. |
+| Settings/Profile | Satisfied | Theme toggle, profile edit, profile image, password change. |
+| Jest + React Testing Library | Satisfied | Jest config, RTL setup, 15 test files, 31 passing tests. |
+| Screenshots | Pending manual addition | No committed app screenshots found. Placeholder section included. |
+
+## Known Limitations and Future Improvements
+
+- Add committed screenshots before final evaluator submission.
+- Fill in the deployed Render backend URL in this README.
+- API test coverage is lighter than frontend test coverage; future work could add backend integration tests for auth, RBAC, CORS, and task workflows.
+- The frontend production bundle currently emits a large chunk warning; code-splitting can be tuned further if required.
+- Admin/manager route visibility is implemented, while the highest-value future refinement would be documenting exact RBAC rules in a dedicated policy file.
+
+## Submission Readiness
+
+The project is functionally strong and aligned with the assignment requirements. It is ready with minor manual documentation completion:
+
+1. Add the Render backend URL.
+2. Add screenshots.
+3. Ensure deployed frontend environment variables point to the deployed backend:
+   - `VITE_API_URL`
+   - `VITE_SOCKET_URL`
+

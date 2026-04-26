@@ -13,6 +13,7 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
   const dialogRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const previousPathRef = useRef(location.pathname);
 
   const projects = useSelector((state) => state.work.projects);
   const tasks = useSelector((state) => state.work.tasks);
@@ -20,6 +21,8 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
   const notifications = useSelector((state) => state.work.notifications);
 
   const closePalette = useCallback(() => {
+    setQuery("");
+    setSelectedIndex(0);
     onClose?.();
     window.requestAnimationFrame(() => restoreFocusRef?.current?.focus?.());
   }, [onClose, restoreFocusRef]);
@@ -55,7 +58,24 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
   }, [open]);
 
   useEffect(() => {
-    if (open) closePalette();
+    if (!open) return undefined;
+
+    const handleDocumentKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closePalette();
+      }
+    };
+
+    document.addEventListener("keydown", handleDocumentKeyDown);
+    return () => document.removeEventListener("keydown", handleDocumentKeyDown);
+  }, [closePalette, open]);
+
+  useEffect(() => {
+    if (previousPathRef.current !== location.pathname) {
+      previousPathRef.current = location.pathname;
+      if (open) closePalette();
+    }
   }, [closePalette, location.pathname, open]);
 
   // Compute results
@@ -100,9 +120,6 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
       e.preventDefault();
       closePalette();
       navigate(results[selectedIndex].url);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      closePalette();
     }
   };
 
@@ -122,7 +139,11 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
           />
-          <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6 md:p-20" onMouseDown={handleBackdropPointerDown}>
+          <div
+            className="fixed inset-0 overflow-y-auto p-4 sm:p-6 md:p-20"
+            data-testid="command-palette-overlay"
+            onPointerDown={handleBackdropPointerDown}
+          >
             <motion.div
               ref={dialogRef}
               role="dialog"
@@ -133,7 +154,7 @@ export default function CommandPalette({ open, onOpen, onClose, restoreFocusRef 
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ ease: "easeOut", duration: 0.2 }}
               className="mx-auto max-w-xl transform divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 transition-all dark:divide-slate-800 dark:bg-slate-900 dark:ring-white/10"
-              onMouseDown={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
             >
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />

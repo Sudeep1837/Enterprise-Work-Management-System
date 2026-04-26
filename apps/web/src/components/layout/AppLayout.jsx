@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../store/authSlice";
@@ -295,6 +295,8 @@ export default function AppLayout() {
   const searchButtonRef = useRef(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const openCommandPalette = useCallback(() => setCommandOpen(true), []);
+  const closeCommandPalette = useCallback(() => setCommandOpen(false), []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -386,7 +388,7 @@ export default function AppLayout() {
               <div className="hidden sm:block">
                 <button
                   ref={searchButtonRef}
-                  onClick={() => setCommandOpen(true)}
+                  onClick={openCommandPalette}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                   aria-label="Search"
                   aria-expanded={commandOpen}
@@ -461,8 +463,8 @@ export default function AppLayout() {
       </div>
       <CommandPalette
         open={commandOpen}
-        onOpen={() => setCommandOpen(true)}
-        onClose={() => setCommandOpen(false)}
+        onOpen={openCommandPalette}
+        onClose={closeCommandPalette}
         restoreFocusRef={searchButtonRef}
       />
     </div>
