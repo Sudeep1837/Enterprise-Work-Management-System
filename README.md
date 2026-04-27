@@ -360,7 +360,8 @@ Key coverage areas:
 - Permission helper coverage for project, task, user, and assignment rules.
 - Form validation for task creation, project creation, user creation/editing, password updates, and due-date rules.
 - Scoped UI rendering for dashboard variants, users, tasks, projects, notifications, and employee-restricted workflows.
-- Redux Toolkit coverage for auth/work state transitions, async thunk behavior, socket-style realtime upserts, notification/activity deduping, and clearing activity feeds.
+- Redux Toolkit coverage for auth/work state transitions, async thunk behavior, fulfilled/rejected reducer branches, socket-style realtime upserts, notification/activity deduping, and clearing activity feeds.
+- API error normalization and display formatter edge cases for stable user-facing fallback behavior.
 - Integration-style user flows including login -> create project -> assign task and employee task execution with RBAC restrictions.
 
 Testing requirements coverage:
@@ -372,13 +373,13 @@ Testing requirements coverage:
 Current quality metrics:
 
 ```text
-Test Suites: 24 passed
-Tests:       58 passed
-Coverage:    62.45% statements
-Lint:        Passed for both web and API
+Test Suites: 26 passed
+Tests:       82 passed
+Coverage:    72.98% statements
+Lint:        Passed for web
 ```
 
-Coverage is intentionally focused on critical business logic and user-facing behavior rather than shallow static markup tests, keeping the suite useful for regression protection and assignment evaluation.
+Coverage is intentionally focused on critical business logic and user-facing behavior rather than shallow static markup tests. Current statement coverage is above the 70% assignment-quality target while keeping the suite useful for regression protection and evaluation.
 
 Run tests:
 
@@ -389,7 +390,7 @@ npm run test -w apps/web
 Run coverage:
 
 ```bash
-npm test -- --coverage
+npm run test -w apps/web -- --coverage --watchAll=false
 ```
 
 Linting:
