@@ -43,8 +43,10 @@ The application is built as a JavaScript-only ESM monorepo with a React + Vite f
 
 ### User Management
 
-- Admin/manager guarded user management route.
+- User management route is role-guarded and scoped by permission.
 - Admin user lifecycle controls with activation/deactivation instead of destructive user deletion.
+- Managers have scoped visibility and limited operational access where applicable; they do not receive full admin-level user lifecycle control.
+- Employees do not manage users.
 - User cards show role, team, manager relationship, status, and activity-oriented metadata.
 
 ### Reporting and Analytics
@@ -72,8 +74,28 @@ The application is built as a JavaScript-only ESM monorepo with a React + Vite f
 | Role | High-Level Capabilities |
 | --- | --- |
 | Admin | Global workspace visibility, project/task administration, user management, reports, activity, notifications, and settings. |
-| Manager | Manage scoped projects and team work, assign and update tasks, review reports, and view team activity. |
+| Manager | Manage scoped projects and team work, assign and update tasks, review reports, view team activity, and access limited user visibility where applicable. |
 | Employee | View and update assigned work, move permitted tasks, comment, manage personal profile/settings, and receive relevant notifications. |
+
+## Assignment Criteria Coverage
+
+| Evaluation Category | Project Coverage |
+| --- | --- |
+| UI/UX Design & Responsiveness | Responsive React + Tailwind interface with role-aware dashboards, mobile-friendly Kanban controls, polished forms, charts, toasts, modals, and light/dark theme support. |
+| Code Quality & Best Practices | JavaScript-only ESM monorepo with modular frontend features, Express route/controller/service layers, reusable hooks/helpers, ESLint, Prettier, and clear separation of API, socket, state, and UI concerns. |
+| Functionalities & Features | End-to-end workspace workflows for authentication, projects, tasks, Kanban execution, comments, attachments, reports, notifications, activity logs, settings, and profile management. |
+| State Management & Interactivity | Redux Toolkit slices and async thunks coordinate authenticated state, workspace data, realtime Socket.IO updates, protected routing, RBAC-aware rendering, drag-and-drop, and form validation. |
+| Deployment & Documentation | Deployed Vercel frontend and Render backend are documented with live links, environment variable guidance, setup steps, scripts, testing notes, screenshots, and production verification details. |
+
+## Production-Style / Enterprise-Ready Highlights
+
+- MongoDB-backed persistence through Mongoose models and a deployed MongoDB Atlas configuration.
+- JWT authentication with role-based access control for Admin, Manager, and Employee workflows.
+- Realtime Socket.IO updates for workspace notifications and state synchronization.
+- Cloudinary-backed media handling for profile images and task attachments.
+- Modular npm workspace monorepo with separate `apps/web` and `apps/api` applications.
+- Jest + React Testing Library coverage for critical UI, RBAC, validation, Redux, and integration-style workflows.
+- Deployed frontend and backend with documented Vercel and Render configuration.
 
 ## Tech Stack
 
@@ -221,14 +243,14 @@ Create backend and frontend environment files from the examples:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+cp apps/web/.env.example apps/web/.env.local
 ```
 
 On Windows PowerShell, create/copy the files manually or run:
 
 ```powershell
 Copy-Item apps/api/.env.example apps/api/.env
-Copy-Item apps/web/.env.example apps/web/.env
+Copy-Item apps/web/.env.example apps/web/.env.local
 ```
 
 ### 3. Seed demo data
@@ -277,7 +299,7 @@ Production notes:
 - Use a production MongoDB Atlas URI.
 - Configure Cloudinary values if profile image and attachment upload should work in production.
 
-### Frontend: `apps/web/.env`
+### Frontend: `apps/web/.env.local`
 
 ```env
 VITE_API_URL=http://localhost:5000
@@ -288,6 +310,7 @@ Production notes:
 
 - Set both values to the deployed backend origin: `https://enterprise-work-management-system.onrender.com`.
 - The frontend automatically appends `/api` for REST calls when needed.
+- Keep local Vite variables in `apps/web/.env.local`; production values are configured in Vercel.
 
 ## Demo Credentials
 
